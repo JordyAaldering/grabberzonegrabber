@@ -12,6 +12,10 @@ struct Args {
     #[arg(long)]
     dry: bool,
 
+    /// Fetch only a single issue, not a whole collection.
+    #[arg(long)]
+    issue: bool,
+
     /// Regex to match image URLs.
     ///
     /// ### Example:
@@ -65,15 +69,16 @@ async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Res
 }
 
 fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
+    let entries: Vec<_> = fs::read_dir(imgs_dir)?
+        .map(|e| e.unwrap().path())
+        .collect();
+    //entries.sort();
+
+    // TODO: currently read_dir MUST go before this, because it is places in the same directory...
+    // Can be resolved once we use a temp directory for downloaded images
     let file = File::create(cbz_dst)?;
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default();
-
-    let mut entries: Vec<_> = fs::read_dir(imgs_dir)?
-        .map(|e| e.unwrap().path())
-        .collect();
-    // Is this needed?
-    entries.sort();
 
     for entry in entries {
         println!("Writing {} to cbz", entry.display());
@@ -88,17 +93,32 @@ fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() {
-    let Args { dry, re, out, url } = Args::parse();
-    let re = Regex::new(&re).expect("Invalid regex");
+fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
+    let document = Html::parse_document(html);
+    let selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
 
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0")
-        .build()
-        .unwrap();
+    let re = Regex::new(&format!(r"{base}/?([^/]+)/?$")).unwrap();
 
-    println!("Fetching {}", url);
+    let mut links = Vec::new();
+
+    for el in document.select(&selector) {
+        if let Some(mut url) = el.value().attr("href") {
+            url = url.trim();
+            if let Some(caps) = re.captures(url) {
+                let issue = &caps[1];
+                // println!("Issue {}: {}", &issue, url);
+                links.push((issue.to_owned(), url.to_owned()));
+            }
+        }
+    }
+
+    links.sort();
+    links.dedup();
+    links
+}
+
+async fn download_issue(client: &Client, url: &str, re: &Regex, out: &Path, dry: bool) {
+    println!("Fetching issue {}", url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
     println!("Found {} images", imgs.len());
@@ -107,6 +127,7 @@ async fn main() {
         return;
     }
 
+    // TODO: is there a generic way to create a temp directory?
     fs::create_dir_all(&out).unwrap();
 
     for (page, img) in imgs {
@@ -118,4 +139,35 @@ async fn main() {
     let cbz_path = out.join(format!("out.cbz"));
     println!("Creating cbz {}", cbz_path.display());
     create_cbz(&out, &cbz_path).unwrap();
+}
+
+async fn download_collection(client: &Client, url: &str, re: &Regex, out: &Path, dry: bool) {
+    println!("Fetching collection {}", url);
+    let text = get_html(client, url).await.unwrap();
+    let links = extract_issue_links(url, &text);
+    println!("Found {} issues", links.len());
+
+    for (issue, link) in links {
+        let issue_out = out.join(&issue);
+        println!("Downloading issue {} to {}", issue, issue_out.display());
+        download_issue(client, &link, re, &issue_out, dry).await;
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let Args { dry, issue, re, out, url } = Args::parse();
+    // TODO: args.re should be Regex, not String. Needs a custom value_parser
+    let re = Regex::new(&re).expect("Invalid regex");
+
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0")
+        .build()
+        .unwrap();
+
+    if issue {
+        download_issue(&client, &url, &re, &out, dry).await;
+    } else {
+        download_collection(&client, &url, &re, &out, dry).await;
+    }
 }
