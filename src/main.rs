@@ -1,9 +1,10 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{fs::{self, File}, io::Write, path::{Path, PathBuf}};
 
 use clap::Parser;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
+use zip::{ZipWriter, write::SimpleFileOptions};
 
 #[derive(Parser)]
 struct Args {
@@ -47,7 +48,7 @@ fn extract_image_urls(html: &str, re: &Regex) -> Vec<(usize, String)> {
             src = src.trim();
             if let Some(caps) = re.captures(src) {
                 let page = caps[1].parse().unwrap();
-                println!("Found page {}: {}", page, src);
+                println!("Page {}: {}", page, src);
                 imgs.push((page, src.to_owned()));
             }
         }
@@ -63,13 +64,34 @@ async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Res
     Ok(())
 }
 
+fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
+    let file = File::create(cbz_dst)?;
+    let mut zip = ZipWriter::new(file);
+    let options = SimpleFileOptions::default();
+
+    let mut entries: Vec<_> = fs::read_dir(imgs_dir)?
+        .map(|e| e.unwrap().path())
+        .collect();
+    // Is this needed?
+    entries.sort();
+
+    for entry in entries {
+        println!("Writing {} to cbz", entry.display());
+        // TODO: this can be safer by using the path extracted from the regex
+        let name = entry.file_name().unwrap().to_string_lossy();
+        let data = fs::read(&entry)?;
+        zip.start_file(name, options)?;
+        zip.write_all(&data)?;
+    }
+
+    zip.finish()?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     let Args { dry, re, out, url } = Args::parse();
     let re = Regex::new(&re).expect("Invalid regex");
-    if !dry {
-        fs::create_dir_all(&out).unwrap();
-    }
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -81,12 +103,19 @@ async fn main() {
     let imgs = extract_image_urls(&text, &re);
     println!("Found {} images", imgs.len());
 
-    for (page, img) in imgs {
-        let path = out.join(format!("{:03}.jpg", page));
-        println!("Downloading {} to {}", img, path.display());
-
-        if !dry {
-            download_image(&client, &img, &path).await.unwrap();
-        }
+    if dry {
+        return;
     }
+
+    fs::create_dir_all(&out).unwrap();
+
+    for (page, img) in imgs {
+        let imp_path = out.join(format!("{:03}.jpg", page));
+        println!("Downloading {} to {}", img, imp_path.display());
+        download_image(&client, &img, &imp_path).await.unwrap();
+    }
+
+    let cbz_path = out.join(format!("out.cbz"));
+    println!("Creating cbz {}", cbz_path.display());
+    create_cbz(&out, &cbz_path).unwrap();
 }
