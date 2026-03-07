@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.60", features = ["derive"] }
+regex = "1.12.3"
+reqwest = "0.13.2"
+scraper = "0.25.0"
+tokio = { version = "1.50.0", features = ["macros", "rt-multi-thread"] }
+zip = "8.2.0"
