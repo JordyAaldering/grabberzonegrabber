@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::Write, path::{Path, PathBuf}};
+use std::{env, fs::{self, File}, io::Write, path::{Path, PathBuf}};
 
 use clap::Parser;
 use regex::Regex;
@@ -69,19 +69,12 @@ async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Res
 }
 
 fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
-    let entries: Vec<_> = fs::read_dir(imgs_dir)?
-        .map(|e| e.unwrap().path())
-        .collect();
-    //entries.sort();
-
-    // TODO: currently read_dir MUST go before this, because it is places in the same directory...
-    // Can be resolved once we use a temp directory for downloaded images
     let file = File::create(cbz_dst)?;
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default();
 
-    for entry in entries {
-        println!("Writing {} to cbz", entry.display());
+    for entry in fs::read_dir(imgs_dir)?.map(|e| e.unwrap().path()) {
+        println!("Writing {} to {}", entry.display(), cbz_dst.display());
         // TODO: this can be safer by using the path extracted from the regex
         let name = entry.file_name().unwrap().to_string_lossy();
         let data = fs::read(&entry)?;
@@ -117,8 +110,8 @@ fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
     links
 }
 
-async fn download_issue(client: &Client, url: &str, re: &Regex, out: &Path, dry: bool) {
-    println!("Fetching issue {}", url);
+async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out: &Path, dry: bool) {
+    println!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
     println!("Found {} images", imgs.len());
@@ -128,17 +121,23 @@ async fn download_issue(client: &Client, url: &str, re: &Regex, out: &Path, dry:
     }
 
     // TODO: is there a generic way to create a temp directory?
-    fs::create_dir_all(&out).unwrap();
+    let issue_tmp = env::temp_dir().join(issue_name);
+    println!("Saving downloaded images to: {}", issue_tmp.display());
+    fs::create_dir(&issue_tmp).unwrap();
 
     for (page, img) in imgs {
-        let imp_path = out.join(format!("{:03}.jpg", page));
-        println!("Downloading {} to {}", img, imp_path.display());
-        download_image(&client, &img, &imp_path).await.unwrap();
+        let img_path = issue_tmp.join(format!("{:03}.jpg", page));
+        println!("Downloading {} to {}", img, img_path.display());
+        download_image(&client, &img, &img_path).await.unwrap();
     }
 
-    let cbz_path = out.join(format!("out.cbz"));
+    fs::create_dir_all(cbz_out).unwrap();
+    let cbz_path = cbz_out.join(format!("out.cbz"));
     println!("Creating cbz {}", cbz_path.display());
-    create_cbz(&out, &cbz_path).unwrap();
+    create_cbz(&issue_tmp, &cbz_path).unwrap();
+
+    println!("Removing temporary directory: {}", issue_tmp.display());
+    fs::remove_dir_all(&issue_tmp).unwrap();
 }
 
 async fn download_collection(client: &Client, url: &str, re: &Regex, out: &Path, dry: bool) {
@@ -150,7 +149,9 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, out: &Path,
     for (issue, link) in links {
         let issue_out = out.join(&issue);
         println!("Downloading issue {} to {}", issue, issue_out.display());
-        download_issue(client, &link, re, &issue_out, dry).await;
+        download_issue(client, &link, re, &issue, &issue_out, dry).await;
+
+        //break;
     }
 }
 
@@ -166,7 +167,7 @@ async fn main() {
         .unwrap();
 
     if issue {
-        download_issue(&client, &url, &re, &out, dry).await;
+        download_issue(&client, &url, &re, "issue", &out, dry).await;
     } else {
         download_collection(&client, &url, &re, &out, dry).await;
     }
