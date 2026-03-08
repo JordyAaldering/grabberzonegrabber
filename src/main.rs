@@ -1,4 +1,4 @@
-use std::{env, fs::{self, File}, io::Write, path::{Path, PathBuf}};
+use std::{fs::{self, File}, io::Write, path::{Path, PathBuf}};
 
 use clap::Parser;
 use regex::Regex;
@@ -65,7 +65,7 @@ fn extract_image_urls(html: &str, re: &Regex) -> Vec<(usize, String)> {
     imgs
 }
 
-async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Result<()> {
+async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> {
     let resp = client.get(url).send().await?;
     let bytes = resp.bytes().await?;
 
@@ -75,26 +75,9 @@ async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Res
         image::load_from_memory(&bytes).unwrap()
     };
 
-    // TODO: no saving to file needed, can just keep it in memory and then write to zip directly
-    img.save_with_format(path.with_extension("webp"), image::ImageFormat::WebP).unwrap();
-    Ok(())
-}
-
-fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
-    let file = File::create(cbz_dst)?;
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default();
-
-    for entry in fs::read_dir(imgs_dir)?.map(|e| e.unwrap().path()) {
-        println!("Writing {} to {}", entry.display(), cbz_dst.display());
-        let name = entry.file_name().unwrap().to_string_lossy();
-        let data = fs::read(&entry)?;
-        zip.start_file(name, options)?;
-        zip.write_all(&data)?;
-    }
-
-    zip.finish()?;
-    Ok(())
+    let mut img_bytes = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut img_bytes), image::ImageFormat::WebP).unwrap();
+    Ok(img_bytes)
 }
 
 fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
@@ -122,50 +105,49 @@ fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
     links
 }
 
-async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out_dir: &Path, dry: bool) {
+async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out_dir: &Path) -> zip::result::ZipResult<()> {
     println!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
     println!("Found {} images", imgs.len());
 
-    if dry {
-        return;
-    }
+    fs::create_dir_all(cbz_out_dir).unwrap();
+    let cbz_dst = cbz_out_dir.join(format!("{}.cbz", issue_name));
+    println!("Creating cbz {}", cbz_dst.display());
 
-    let issue_tmp = env::temp_dir().join(issue_name);
-    println!("Saving downloaded images to: {}", issue_tmp.display());
-    fs::create_dir(&issue_tmp).unwrap();
+    let file = File::create(&cbz_dst)?;
+    let mut zip = ZipWriter::new(file);
+    let options = SimpleFileOptions::default();
 
     for (page, img) in imgs {
-        let img_path = issue_tmp.join(format!("{:03}.jpg", page));
-        println!("Downloading {} to {}", img, img_path.display());
-        download_image(&client, &img, &img_path).await.unwrap();
+        println!("Downloading {}", img);
+        let img_data = download_image(&client, &img).await.unwrap();
+
+        let name = format!("{:03}.webp", page);
+        println!("Writing {} to {}", name, cbz_dst.display());
+        zip.start_file(name, options)?;
+        zip.write_all(&img_data)?;
     }
 
-    fs::create_dir_all(cbz_out_dir).unwrap();
-    let cbz_path = cbz_out_dir.join(format!("{}.cbz", issue_name));
-    println!("Creating cbz {}", cbz_path.display());
-    create_cbz(&issue_tmp, &cbz_path).unwrap();
-
-    println!("Removing temporary directory: {}", issue_tmp.display());
-    fs::remove_dir_all(&issue_tmp).unwrap();
+    zip.finish()?;
+    Ok(())
 }
 
-async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir: &Path, dry: bool) {
+async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir: &Path) {
     println!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     println!("Found {} issues", links.len());
 
     for (issue, link) in links {
-        download_issue(client, &link, re, &issue, &cbz_out_dir, dry).await;
+        download_issue(client, &link, re, &issue, &cbz_out_dir).await.unwrap();
         break;
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let Args { dry, issue, re, cbz_out_dir, url } = Args::parse();
+    let Args { dry: _, issue, re, cbz_out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -173,8 +155,8 @@ async fn main() {
         .unwrap();
 
     if issue {
-        download_issue(&client, &url, &re, "issue", &cbz_out_dir, dry).await;
+        download_issue(&client, &url, &re, "issue", &cbz_out_dir).await.unwrap();
     } else {
-        download_collection(&client, &url, &re, &cbz_out_dir, dry).await;
+        download_collection(&client, &url, &re, &cbz_out_dir).await;
     }
 }
