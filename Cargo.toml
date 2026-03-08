@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.60", features = ["derive"] }
+image = "0.25.9"
 regex = "1.12.3"
 reqwest = "0.13.2"
 scraper = "0.25.0"

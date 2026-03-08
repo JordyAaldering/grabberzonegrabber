@@ -68,7 +68,15 @@ fn extract_image_urls(html: &str, re: &Regex) -> Vec<(usize, String)> {
 async fn download_image(client: &Client, url: &str, path: &Path) -> reqwest::Result<()> {
     let resp = client.get(url).send().await?;
     let bytes = resp.bytes().await?;
-    fs::write(path, &bytes).unwrap();
+
+    let img = if let Ok(ext) = image::ImageFormat::from_path(PathBuf::from(url)) {
+        image::load_from_memory_with_format(&bytes, ext).unwrap()
+    } else {
+        image::load_from_memory(&bytes).unwrap()
+    };
+
+    // TODO: no saving to file needed, can just keep it in memory and then write to zip directly
+    img.save_with_format(path.with_extension("webp"), image::ImageFormat::WebP).unwrap();
     Ok(())
 }
 
@@ -151,7 +159,7 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir
 
     for (issue, link) in links {
         download_issue(client, &link, re, &issue, &cbz_out_dir, dry).await;
-        //break;
+        break;
     }
 }
 
