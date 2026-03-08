@@ -3,6 +3,7 @@ mod issue;
 use std::{collections::HashMap, fs, path::{Path, PathBuf}};
 
 use clap::Parser;
+use futures::future;
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -79,10 +80,11 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &P
     let links = extract_issue_links(url, &text);
     println!("Found {} issues", links.len());
 
-    for (issue, link) in links {
-        download_issue(client, &link, re, &issue, &out_dir).await.unwrap();
-        break;
-    }
+    let futures = links.iter().map(|(issue, link)| {
+        download_issue(client, link, re, issue, out_dir)
+    }).collect::<Vec<_>>();
+
+    future::join_all(futures).await;
 }
 
 #[tokio::main]
