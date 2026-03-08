@@ -1,6 +1,6 @@
 mod issue;
 
-use std::{fs, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs, path::{Path, PathBuf}};
 
 use clap::Parser;
 use regex::Regex;
@@ -48,28 +48,28 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     resp.text().await
 }
 
-fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
+fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
     let document = Html::parse_document(html);
     let selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
 
     let re = Regex::new(&format!(r"{}/?([^/]+)/?$", base)).unwrap();
 
-    let mut links = Vec::new();
+    let mut links = HashMap::new();
 
     for el in document.select(&selector) {
         if let Some(mut url) = el.value().attr("href") {
             url = url.trim();
-            println!("Found link: {}", url);
             if let Some(caps) = re.captures(url) {
                 let issue = &caps[1];
-                // println!("Issue {}: {}", &issue, url);
-                links.push((issue.to_owned(), url.to_owned()));
+                if links.contains_key(issue) {
+                    // Duplicates may occur, that is no problem
+                    links.insert(issue.to_owned(), url.to_owned());
+                    println!("Found issue: {}", url);
+                }
             }
         }
     }
 
-    links.sort();
-    links.dedup();
     links
 }
 

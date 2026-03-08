@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::File, io::Write, path::{Path, PathBuf}};
 
 use regex::Regex;
 use reqwest::Client;
@@ -10,18 +10,21 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     resp.text().await
 }
 
-fn extract_image_urls(html: &str, re: &Regex) -> Vec<(usize, String)> {
+fn extract_image_urls(html: &str, re: &Regex) -> HashMap<usize, String> {
     let document = Html::parse_document(html);
     let selector = Selector::parse("img").unwrap();
 
-    let mut imgs = Vec::new();
+    let mut imgs = HashMap::new();
+
     for el in document.select(&selector) {
         if let Some(mut src) = el.value().attr("data-src").or(el.value().attr("src")) {
             src = src.trim();
             if let Some(caps) = re.captures(src) {
                 let page = caps[1].parse().unwrap();
                 println!("Page {}: {}", page, src);
-                imgs.push((page, src.to_owned()));
+                if imgs.insert(page, src.to_owned()).is_some() {
+                    println!("Warning: duplicate page {}", page);
+                }
             }
         }
     }
@@ -61,7 +64,7 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
         println!("Downloading {}", img);
         let img_data = download_image(&client, &img).await.unwrap();
 
-        let name = format!("{:03}.webp", page);
+        let name = format!("{:04}.webp", page);
         println!("Writing {} to {}", name, cbz_dst.display());
         zip.start_file(name, options)?;
         zip.write_all(&img_data)?;
