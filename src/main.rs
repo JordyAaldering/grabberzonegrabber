@@ -29,8 +29,8 @@ struct Args {
     re: String,
 
     /// Output directory.
-    #[arg(long, default_value = "downloads")]
-    out: PathBuf,
+    #[arg(short('o'), long("out"), default_value = "downloads")]
+    cbz_out_dir: PathBuf,
 
     #[arg()]
     url: String,
@@ -75,7 +75,6 @@ fn create_cbz(imgs_dir: &Path, cbz_dst: &Path) -> zip::result::ZipResult<()> {
 
     for entry in fs::read_dir(imgs_dir)?.map(|e| e.unwrap().path()) {
         println!("Writing {} to {}", entry.display(), cbz_dst.display());
-        // TODO: this can be safer by using the path extracted from the regex
         let name = entry.file_name().unwrap().to_string_lossy();
         let data = fs::read(&entry)?;
         zip.start_file(name, options)?;
@@ -110,7 +109,7 @@ fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
     links
 }
 
-async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out: &Path, dry: bool) {
+async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out_dir: &Path, dry: bool) {
     println!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
@@ -120,7 +119,6 @@ async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str
         return;
     }
 
-    // TODO: is there a generic way to create a temp directory?
     let issue_tmp = env::temp_dir().join(issue_name);
     println!("Saving downloaded images to: {}", issue_tmp.display());
     fs::create_dir(&issue_tmp).unwrap();
@@ -131,8 +129,8 @@ async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str
         download_image(&client, &img, &img_path).await.unwrap();
     }
 
-    fs::create_dir_all(cbz_out).unwrap();
-    let cbz_path = cbz_out.join(format!("out.cbz"));
+    fs::create_dir_all(cbz_out_dir).unwrap();
+    let cbz_path = cbz_out_dir.join(format!("{}.cbz", issue_name));
     println!("Creating cbz {}", cbz_path.display());
     create_cbz(&issue_tmp, &cbz_path).unwrap();
 
@@ -140,24 +138,20 @@ async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str
     fs::remove_dir_all(&issue_tmp).unwrap();
 }
 
-async fn download_collection(client: &Client, url: &str, re: &Regex, out: &Path, dry: bool) {
+async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir: &Path, dry: bool) {
     println!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     println!("Found {} issues", links.len());
 
     for (issue, link) in links {
-        let issue_out = out.join(&issue);
-        println!("Downloading issue {} to {}", issue, issue_out.display());
-        download_issue(client, &link, re, &issue, &issue_out, dry).await;
-
-        //break;
+        download_issue(client, &link, re, &issue, &cbz_out_dir, dry).await;
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let Args { dry, issue, re, out, url } = Args::parse();
+    let Args { dry, issue, re, cbz_out_dir, url } = Args::parse();
     // TODO: args.re should be Regex, not String. Needs a custom value_parser
     let re = Regex::new(&re).expect("Invalid regex");
 
@@ -167,8 +161,8 @@ async fn main() {
         .unwrap();
 
     if issue {
-        download_issue(&client, &url, &re, "issue", &out, dry).await;
+        download_issue(&client, &url, &re, "issue", &cbz_out_dir, dry).await;
     } else {
-        download_collection(&client, &url, &re, &out, dry).await;
+        download_collection(&client, &url, &re, &cbz_out_dir, dry).await;
     }
 }
