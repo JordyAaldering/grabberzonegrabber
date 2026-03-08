@@ -6,6 +6,10 @@ use reqwest::Client;
 use scraper::{Html, Selector};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
+fn parse_regex(re: &str) -> Result<Regex, String> {
+    Regex::new(re).map_err(|e| e.to_string())
+}
+
 #[derive(Parser)]
 struct Args {
     /// Dry run: search for images without downloading.
@@ -25,8 +29,8 @@ struct Args {
     /// * `\.`: literal dot before the file extension.
     /// * `(?:jpg|jpeg|png|webp)`: non-capturing group for the file extension.
     /// * `$`: end of string.
-    #[arg(long, default_value = r".*(?:-|/)(\d+)\.(?:jpg|jpeg|png|webp)$")]
-    re: String,
+    #[arg(long, value_parser = parse_regex, default_value = r".*(?:-|/)(\d+)\.(?:jpg|jpeg|png|webp)$")]
+    re: Regex,
 
     /// Output directory.
     #[arg(short('o'), long("out"), default_value = "downloads")]
@@ -89,13 +93,14 @@ fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
     let document = Html::parse_document(html);
     let selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
 
-    let re = Regex::new(&format!(r"{base}/?([^/]+)/?$")).unwrap();
+    let re = Regex::new(&format!(r"{}/?([^/]+)/?$", base)).unwrap();
 
     let mut links = Vec::new();
 
     for el in document.select(&selector) {
         if let Some(mut url) = el.value().attr("href") {
             url = url.trim();
+            println!("Found link: {}", url);
             if let Some(caps) = re.captures(url) {
                 let issue = &caps[1];
                 // println!("Issue {}: {}", &issue, url);
@@ -146,14 +151,13 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir
 
     for (issue, link) in links {
         download_issue(client, &link, re, &issue, &cbz_out_dir, dry).await;
+        //break;
     }
 }
 
 #[tokio::main]
 async fn main() {
     let Args { dry, issue, re, cbz_out_dir, url } = Args::parse();
-    // TODO: args.re should be Regex, not String. Needs a custom value_parser
-    let re = Regex::new(&re).expect("Invalid regex");
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
