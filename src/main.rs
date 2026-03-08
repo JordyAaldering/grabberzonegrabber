@@ -62,10 +62,10 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
             url = url.trim();
             if let Some(caps) = re.captures(url) {
                 let issue = &caps[1];
-                if links.contains_key(issue) {
-                    // Duplicates may occur, that is no problem
-                    links.insert(issue.to_owned(), url.to_owned());
-                    println!("Found issue: {}", url);
+                if let Some(prev) = links.insert(issue.to_owned(), url.to_owned()) {
+                    if prev != url {
+                        println!("Warning: duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
+                    }
                 }
             }
         }
