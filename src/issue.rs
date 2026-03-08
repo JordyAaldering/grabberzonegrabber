@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::Write, path::{Path, PathBuf}};
+use std::{fs::File, io::Write, path::{Path, PathBuf}};
 
 use regex::Regex;
 use reqwest::Client;
@@ -44,14 +44,13 @@ async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> 
     Ok(img_bytes)
 }
 
-pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, cbz_out_dir: &Path) -> zip::result::ZipResult<()> {
+pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, out_dir: &Path) -> zip::result::ZipResult<()> {
     println!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
     println!("Found {} images", imgs.len());
 
-    fs::create_dir_all(cbz_out_dir).unwrap();
-    let cbz_dst = cbz_out_dir.join(format!("{}.cbz", issue_name));
+    let cbz_dst = out_dir.join(format!("{}.cbz", issue_name));
     println!("Creating cbz {}", cbz_dst.display());
 
     let file = File::create(&cbz_dst)?;

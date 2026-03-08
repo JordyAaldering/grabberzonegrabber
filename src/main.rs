@@ -1,6 +1,6 @@
 mod issue;
 
-use std::path::{Path, PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 
 use clap::Parser;
 use regex::Regex;
@@ -37,7 +37,7 @@ struct Args {
 
     /// Output directory.
     #[arg(short('o'), long("out"), default_value = "downloads")]
-    cbz_out_dir: PathBuf,
+    out_dir: PathBuf,
 
     #[arg()]
     url: String,
@@ -73,21 +73,23 @@ fn extract_issue_links(base: &str, html: &str) -> Vec<(String, String)> {
     links
 }
 
-async fn download_collection(client: &Client, url: &str, re: &Regex, cbz_out_dir: &Path) {
+async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &Path) {
     println!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     println!("Found {} issues", links.len());
 
     for (issue, link) in links {
-        download_issue(client, &link, re, &issue, &cbz_out_dir).await.unwrap();
+        download_issue(client, &link, re, &issue, &out_dir).await.unwrap();
         break;
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let Args { dry: _, issue, re, cbz_out_dir, url } = Args::parse();
+    let Args { dry: _, issue, re, out_dir, url } = Args::parse();
+
+    fs::create_dir_all(&out_dir).unwrap();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -95,8 +97,8 @@ async fn main() {
         .unwrap();
 
     if issue {
-        download_issue(&client, &url, &re, "issue", &cbz_out_dir).await.unwrap();
+        download_issue(&client, &url, &re, "issue", &out_dir).await.unwrap();
     } else {
-        download_collection(&client, &url, &re, &cbz_out_dir).await;
+        download_collection(&client, &url, &re, &out_dir).await;
     }
 }
