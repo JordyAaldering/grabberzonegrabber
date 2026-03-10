@@ -52,7 +52,7 @@ async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> 
     Ok(img_bytes)
 }
 
-pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, out_dir: &Path) -> zip::result::ZipResult<()> {
+pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, out_dir: &Path, dry: bool) -> zip::result::ZipResult<()> {
     log::info!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
@@ -60,6 +60,10 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
 
     if imgs.is_empty() {
         log::warn!("No images found for {}", url);
+        return Ok(());
+    }
+
+    if dry {
         return Ok(());
     }
 

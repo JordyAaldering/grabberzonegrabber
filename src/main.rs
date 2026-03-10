@@ -16,7 +16,7 @@ fn parse_regex(re: &str) -> Result<Regex, String> {
 
 #[derive(Parser)]
 struct Args {
-    /// Dry run: search for images without downloading.
+    /// Dry run: search for images without downloading or creating files.
     #[arg(long)]
     dry: bool,
 
@@ -84,14 +84,14 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
     links
 }
 
-async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &Path) {
+async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &Path, dry: bool) {
     log::info!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     log::info!("Found {} issues", links.len());
 
     let futures = links.iter().map(|(issue, link)| {
-        download_issue(client, link, re, issue, out_dir)
+        download_issue(client, link, re, issue, out_dir, dry)
     }).collect::<Vec<_>>();
 
     future::join_all(futures).await;
@@ -101,7 +101,7 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &P
 async fn main() {
     env_logger::init();
 
-    let Args { dry: _, issue, re, out_dir, url } = Args::parse();
+    let Args { dry, issue, re, out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -115,18 +115,24 @@ async fn main() {
             let collection_name = iter.next().unwrap_or("collection");
             PathBuf::from(collection_name)
         });
-        log::info!("Writing to: {}/", out_dir.display());
-        fs::create_dir_all(&out_dir).unwrap();
 
-        download_issue(&client, &url, &re, issue_name, &out_dir).await.unwrap();
+        if !dry {
+            log::info!("Writing to: {}", out_dir.display());
+            fs::create_dir_all(&out_dir).unwrap();
+        }
+
+        download_issue(&client, &url, &re, issue_name, &out_dir, dry).await.unwrap();
     } else {
         let out_dir = out_dir.unwrap_or_else(|| {
             let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
             PathBuf::from(collection_name)
         });
-        log::info!("Writing to: {}/", out_dir.display());
-        fs::create_dir_all(&out_dir).unwrap();
 
-        download_collection(&client, &url, &re, &out_dir).await;
+        if !dry {
+            log::info!("Writing to: {}", out_dir.display());
+            fs::create_dir_all(&out_dir).unwrap();
+        }
+
+        download_collection(&client, &url, &re, &out_dir, dry).await;
     }
 }
