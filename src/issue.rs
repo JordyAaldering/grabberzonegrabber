@@ -19,11 +19,16 @@ fn extract_image_urls(html: &str, re: &Regex) -> HashMap<usize, String> {
     for el in document.select(&selector) {
         if let Some(mut src) = el.value().attr("data-src").or(el.value().attr("src")) {
             src = src.trim();
+            log::trace!("Found image URL: {}", src);
             if let Some(caps) = re.captures(src) {
-                let page = caps[1].parse().unwrap();
-                println!("Page {}: {}", page, src);
+                let page = if let Ok(page) = caps[1].parse() {
+                    page
+                } else {
+                    imgs.len() + 1
+                };
+                log::trace!("Page {}: {}", page, src);
                 if imgs.insert(page, src.to_owned()).is_some() {
-                    println!("Warning: duplicate page {}", page);
+                    log::warn!("Overwriting duplicate page {}", page);
                 }
             }
         }
@@ -48,28 +53,34 @@ async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> 
 }
 
 pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, out_dir: &Path) -> zip::result::ZipResult<()> {
-    println!("Fetching issue {} from {}", issue_name, url);
+    log::info!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, &re);
-    println!("Found {} images", imgs.len());
+    log::info!("Found {} images for {}", imgs.len(), url);
+
+    if imgs.is_empty() {
+        log::warn!("No images found for {}", url);
+        return Ok(());
+    }
 
     let cbz_dst = out_dir.join(format!("{}.cbz", issue_name));
-    println!("Creating cbz {}", cbz_dst.display());
+    log::info!("Creating cbz {}", cbz_dst.display());
 
     let file = File::create(&cbz_dst)?;
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default();
 
     for (page, img) in imgs {
-        println!("Downloading {}", img);
+        log::trace!("Downloading {}", img);
         let img_data = download_image(&client, &img).await.unwrap();
 
         let name = format!("{:04}.webp", page);
-        println!("Writing {} to {}", name, cbz_dst.display());
+        log::trace!("Writing {} to {}", name, cbz_dst.display());
         zip.start_file(name, options)?;
         zip.write_all(&img_data)?;
     }
 
     zip.finish()?;
+    log::info!("Finished {}", cbz_dst.display());
     Ok(())
 }

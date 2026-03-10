@@ -27,13 +27,19 @@ struct Args {
     /// Regex to match image URLs.
     ///
     /// ### Example:
-    /// * `.*`: match anything at the start.
+    /// * `.*`: match anything at the start.<br/>
     /// * `(?:-|/)`: non-capturing group for page number separator.
     /// * `(\d+)`: the digits we want to extract that represent the page number.
     /// * `\.`: literal dot before the file extension.
     /// * `(?:jpg|jpeg|png|webp)`: non-capturing group for the file extension.
     /// * `$`: end of string.
-    #[arg(long, value_parser = parse_regex, default_value = r".*(?:-|/)(\d+)\.(?:jpg|jpeg|png|webp)$")]
+    ///
+    /// ### Edge case:
+    /// In some cases, the image URLs may not actually end with e.g. `/number.png`.
+    /// Sometimes, the URL may end with something that looks like `123abc456def.png`.
+    /// If no images are found, try replacing `(\d+)` with `(\w+)`, which will match any alphanumeric character.
+    /// If this cannot be converted to a number, images are assumed to appear in order.
+    #[arg(long, value_parser = parse_regex, default_value = r"https://grabber.zone/wp-content/uploads/WP-manga/data/.*(?:-|/)(\d+)\.(?:jpg|jpeg|png|webp)$", verbatim_doc_comment)]
     re: Regex,
 
     /// Output directory.
@@ -64,7 +70,7 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
                 let issue = &caps[1];
                 if let Some(prev) = links.insert(issue.to_owned(), url.to_owned()) {
                     if prev != url {
-                        println!("Warning: duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
+                        log::warn!("Duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
                     }
                 }
             }
@@ -75,10 +81,10 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
 }
 
 async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &Path) {
-    println!("Fetching collection {}", url);
+    log::info!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
-    println!("Found {} issues", links.len());
+    log::info!("Found {} issues", links.len());
 
     let futures = links.iter().map(|(issue, link)| {
         download_issue(client, link, re, issue, out_dir)
@@ -89,6 +95,8 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &P
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let Args { dry: _, issue, re, out_dir, url } = Args::parse();
 
     fs::create_dir_all(&out_dir).unwrap();
