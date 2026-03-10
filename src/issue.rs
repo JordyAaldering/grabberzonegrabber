@@ -64,8 +64,12 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
     }
 
     let cbz_dst = out_dir.join(format!("{}.cbz", issue_name));
-    log::info!("Creating cbz {}", cbz_dst.display());
+    if cbz_dst.exists() {
+        log::warn!("File {} already exists, skipping", cbz_dst.display());
+        return Ok(());
+    }
 
+    log::info!("Creating cbz {}", cbz_dst.display());
     let file = File::create(&cbz_dst)?;
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default();

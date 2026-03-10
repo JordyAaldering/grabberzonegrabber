@@ -43,8 +43,10 @@ struct Args {
     re: Regex,
 
     /// Output directory.
-    #[arg(short('o'), long("out"), default_value = "downloads")]
-    out_dir: PathBuf,
+    ///
+    /// If not specified, the output directory will be derived from the URL.
+    #[arg(short('o'), long("out"))]
+    out_dir: Option<PathBuf>,
 
     #[arg()]
     url: String,
@@ -72,6 +74,8 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
                     if prev != url {
                         log::warn!("Duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
                     }
+                } else {
+                    log::info!("Found issue: {}", issue);
                 }
             }
         }
@@ -99,16 +103,30 @@ async fn main() {
 
     let Args { dry: _, issue, re, out_dir, url } = Args::parse();
 
-    fs::create_dir_all(&out_dir).unwrap();
-
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
         .build()
         .unwrap();
 
     if issue {
-        download_issue(&client, &url, &re, "issue", &out_dir).await.unwrap();
+        let mut iter = url.rsplit('/');
+        let issue_name = iter.find(|s| !s.is_empty()).unwrap_or("issue");
+        let out_dir = out_dir.unwrap_or_else(|| {
+            let collection_name = iter.next().unwrap_or("collection");
+            PathBuf::from(collection_name)
+        });
+        log::info!("Writing to: {}/", out_dir.display());
+        fs::create_dir_all(&out_dir).unwrap();
+
+        download_issue(&client, &url, &re, issue_name, &out_dir).await.unwrap();
     } else {
+        let out_dir = out_dir.unwrap_or_else(|| {
+            let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
+            PathBuf::from(collection_name)
+        });
+        log::info!("Writing to: {}/", out_dir.display());
+        fs::create_dir_all(&out_dir).unwrap();
+
         download_collection(&client, &url, &re, &out_dir).await;
     }
 }
