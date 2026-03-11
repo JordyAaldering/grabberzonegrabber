@@ -20,6 +20,10 @@ struct Args {
     #[arg(long)]
     issue: bool,
 
+    /// HTML class used to identify comic page images.
+    #[arg(long, default_value = "wp-manga-chapter-img")]
+    html_image_class: String,
+
     /// Output directory.
     ///
     /// If not specified, the output directory will be derived from the URL.
@@ -62,14 +66,14 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
     links
 }
 
-async fn download_collection(client: &Client, url: &str, out_dir: &Path, dry: bool) {
+async fn download_collection(client: &Client, url: &str, html_image_class: &str, out_dir: &Path, dry: bool) {
     log::info!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     log::info!("Found {} issues", links.len());
 
     let futures = links.iter().map(|(issue, link)| {
-        download_issue(client, link, issue, out_dir, dry)
+        download_issue(client, link, html_image_class, issue, out_dir, dry)
     }).collect::<Vec<_>>();
 
     future::join_all(futures).await;
@@ -79,7 +83,7 @@ async fn download_collection(client: &Client, url: &str, out_dir: &Path, dry: bo
 async fn main() {
     env_logger::init();
 
-    let Args { dry, issue, out_dir, url } = Args::parse();
+    let Args { dry, issue, html_image_class, out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -99,7 +103,7 @@ async fn main() {
             fs::create_dir_all(&out_dir).unwrap();
         }
 
-        download_issue(&client, &url, issue_name, &out_dir, dry).await.unwrap();
+        download_issue(&client, &url, &html_image_class, issue_name, &out_dir, dry).await.unwrap();
     } else {
         let out_dir = out_dir.unwrap_or_else(|| {
             let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
@@ -111,6 +115,6 @@ async fn main() {
             fs::create_dir_all(&out_dir).unwrap();
         }
 
-        download_collection(&client, &url, &out_dir, dry).await;
+        download_collection(&client, &url, &html_image_class, &out_dir, dry).await;
     }
 }
