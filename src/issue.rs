@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Write, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::File, io::{Cursor, Write}, path::{Path, PathBuf}};
 
 use regex::Regex;
 use reqwest::Client;
@@ -73,9 +73,10 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
         return Ok(());
     }
 
-    log::info!("Creating cbz {}", cbz_dst.display());
-    let file = File::create(&cbz_dst)?;
-    let mut zip = ZipWriter::new(file);
+    log::info!("Merging images of {}", issue_name);
+    // Write to buffer first, only write to disk if successful to avoid partial files
+    let buffer = Cursor::new(Vec::new());
+    let mut zip = ZipWriter::new(buffer);
     let options = SimpleFileOptions::default();
 
     for (page, img) in imgs {
@@ -88,7 +89,10 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
         zip.write_all(&img_data)?;
     }
 
-    zip.finish()?;
-    log::info!("Finished {}", cbz_dst.display());
+    log::info!("Writing to cbz {}", cbz_dst.display());
+    let buffer = zip.finish()?;
+    let mut file = File::create(&cbz_dst)?;
+    file.write_all(&buffer.into_inner())?;
+
     Ok(())
 }
