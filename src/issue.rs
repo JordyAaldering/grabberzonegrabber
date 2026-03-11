@@ -1,8 +1,7 @@
-use std::{collections::HashMap, fs::File, io::{Cursor, Write}, path::{Path, PathBuf}};
+use std::{fs::File, io::{Cursor, Write}, path::{Path, PathBuf}};
 
-use regex::Regex;
 use reqwest::Client;
-use scraper::{Html, Selector};
+use scraper::{CaseSensitivity, Html, Selector};
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
 async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
@@ -10,26 +9,19 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     resp.text().await
 }
 
-fn extract_image_urls(html: &str, re: &Regex) -> HashMap<usize, String> {
+fn extract_image_urls(html: &str) -> Vec<String> {
     let document = Html::parse_document(html);
     let selector = Selector::parse("img").unwrap();
 
-    let mut imgs = HashMap::new();
+    // Images are assumed to appear in order
+    let mut imgs = Vec::new();
 
     for el in document.select(&selector) {
-        if let Some(mut src) = el.value().attr("data-src").or(el.value().attr("src")) {
-            src = src.trim();
-            log::trace!("Found image URL: {}", src);
-            if let Some(caps) = re.captures(src) {
-                let page = if let Ok(page) = caps[1].parse() {
-                    page
-                } else {
-                    imgs.len() + 1
-                };
-                log::trace!("Page {}: {}", page, src);
-                if imgs.insert(page, src.to_owned()).is_some() {
-                    log::warn!("Overwriting duplicate page {}", page);
-                }
+        let el = el.value();
+        if el.has_class("wp-manga-chapter-img", CaseSensitivity::AsciiCaseInsensitive) {
+            if let Some(src) = el.attr("data-src").or(el.attr("src")) {
+                log::trace!("Page {}: {}", imgs.len() + 1, src.trim());
+                imgs.push(src.trim().to_owned());
             }
         }
     }
@@ -48,14 +40,14 @@ async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> 
     };
 
     let mut img_bytes = Vec::new();
-    img.write_to(&mut std::io::Cursor::new(&mut img_bytes), image::ImageFormat::WebP).unwrap();
+    img.write_to(&mut Cursor::new(&mut img_bytes), image::ImageFormat::WebP).unwrap();
     Ok(img_bytes)
 }
 
-pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: &str, out_dir: &Path, dry: bool) -> zip::result::ZipResult<()> {
+pub async fn download_issue(client: &Client, url: &str, issue_name: &str, out_dir: &Path, dry: bool) -> zip::result::ZipResult<()> {
     log::info!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
-    let imgs = extract_image_urls(&text, &re);
+    let imgs = extract_image_urls(&text);
     log::info!("Found {} images for {}", imgs.len(), url);
 
     if imgs.is_empty() {
@@ -81,7 +73,7 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
     let options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Stored);
 
-    for (page, img) in imgs {
+    for (page, img) in imgs.into_iter().enumerate() {
         log::trace!("Downloading {}", img);
         let img_data = download_image(&client, &img).await.unwrap();
 

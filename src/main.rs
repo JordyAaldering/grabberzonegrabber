@@ -10,10 +10,6 @@ use scraper::{Html, Selector};
 
 use crate::issue::download_issue;
 
-fn parse_regex(re: &str) -> Result<Regex, String> {
-    Regex::new(re).map_err(|e| e.to_string())
-}
-
 #[derive(Parser)]
 struct Args {
     /// Dry run: search for images without downloading or creating files.
@@ -23,24 +19,6 @@ struct Args {
     /// Fetch only a single issue, not a whole collection.
     #[arg(long)]
     issue: bool,
-
-    /// Regex to match image URLs.
-    ///
-    /// ### Example:
-    /// * `.*`: match anything at the start.<br/>
-    /// * `(?:-|/)`: non-capturing group for page number separator.
-    /// * `(\d+)`: the digits we want to extract that represent the page number.
-    /// * `\.`: literal dot before the file extension.
-    /// * `(?:jpg|jpeg|png|webp)`: non-capturing group for the file extension.
-    /// * `$`: end of string.
-    ///
-    /// ### Edge case:
-    /// In some cases, the image URLs may not actually end with e.g. `/number.png`.
-    /// Sometimes, the URL may end with something that looks like `123abc456def.png`.
-    /// If no images are found, try replacing `(\d+)` with `(\w+)`, which will match any alphanumeric character.
-    /// If this cannot be converted to a number, images are assumed to appear in order.
-    #[arg(long, value_parser = parse_regex, default_value = r"https://grabber.zone/wp-content/uploads/WP-manga/data/.*(?:-|/)(\d+)\.(?:jpg|jpeg|png|webp)$", verbatim_doc_comment)]
-    re: Regex,
 
     /// Output directory.
     ///
@@ -84,14 +62,14 @@ fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
     links
 }
 
-async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &Path, dry: bool) {
+async fn download_collection(client: &Client, url: &str, out_dir: &Path, dry: bool) {
     log::info!("Fetching collection {}", url);
     let text = get_html(client, url).await.unwrap();
     let links = extract_issue_links(url, &text);
     log::info!("Found {} issues", links.len());
 
     let futures = links.iter().map(|(issue, link)| {
-        download_issue(client, link, re, issue, out_dir, dry)
+        download_issue(client, link, issue, out_dir, dry)
     }).collect::<Vec<_>>();
 
     future::join_all(futures).await;
@@ -101,7 +79,7 @@ async fn download_collection(client: &Client, url: &str, re: &Regex, out_dir: &P
 async fn main() {
     env_logger::init();
 
-    let Args { dry, issue, re, out_dir, url } = Args::parse();
+    let Args { dry, issue, out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -121,7 +99,7 @@ async fn main() {
             fs::create_dir_all(&out_dir).unwrap();
         }
 
-        download_issue(&client, &url, &re, issue_name, &out_dir, dry).await.unwrap();
+        download_issue(&client, &url, issue_name, &out_dir, dry).await.unwrap();
     } else {
         let out_dir = out_dir.unwrap_or_else(|| {
             let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
@@ -133,6 +111,6 @@ async fn main() {
             fs::create_dir_all(&out_dir).unwrap();
         }
 
-        download_collection(&client, &url, &re, &out_dir, dry).await;
+        download_collection(&client, &url, &out_dir, dry).await;
     }
 }
