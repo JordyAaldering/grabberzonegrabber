@@ -12,7 +12,11 @@ struct Args {
     #[arg(long)]
     dry: bool,
 
-    /// HTML class used to identify comic page images.
+    /// HTML class used to identify issues from the series page.
+    #[arg(long, default_value = "wp-manga-chapter")]
+    html_issue_class: String,
+
+    /// HTML class used to identify pages from the issue page.
     #[arg(long, default_value = "wp-manga-chapter-img")]
     html_image_class: String,
 
@@ -30,7 +34,7 @@ struct Args {
 async fn main() {
     env_logger::init();
 
-    let Args { dry, html_image_class, out_dir, url } = Args::parse();
+    let Args { dry, html_issue_class, html_image_class, out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
@@ -47,5 +51,5 @@ async fn main() {
         fs::create_dir_all(&out_dir).unwrap();
     }
 
-    series::download_series(&client, &url, &html_image_class, &out_dir, dry).await;
+    series::download_series(&client, &url, &html_issue_class, &html_image_class, &out_dir, dry).await;
 }

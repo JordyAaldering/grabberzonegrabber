@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use futures::future;
-use regex::Regex;
 use reqwest::Client;
+use sanitize_filename::sanitize;
 use scraper::{Html, Selector};
 
 use crate::issue::download_issue;
@@ -12,37 +12,71 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     resp.text().await
 }
 
-fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
+/// The series webpage is expected to contain a list of all issues of the comic book.
+/// These issues are expected to have a unique `li` class.
+///
+/// If possible, we extract the human-readable name and date.
+///
+/// ### Example
+///
+/// ```html
+/// <li class="wp-manga-chapter has-thumb">
+///   <div class="chapter-thumbnail">
+///     <a href="https://grabber.zone/comics/sonic-the-hedgehog-modern-era/sonic-the-hedgehog-247/">
+///       <img class="thumb"
+///            src="https://grabber.zone/wp-content/uploads/thumb-1414-75x106.jpg">
+///     </a>
+///   </div>
+///   <a href="https://grabber.zone/comics/sonic-the-hedgehog-modern-era/sonic-the-hedgehog-247/">
+///   </a>
+///   <a href="https://grabber.zone/comics/sonic-the-hedgehog-modern-era/sonic-the-hedgehog-247/">
+///     Sonic the Hedgehog 247
+///   </a>
+///   <span class="chapter-release-date">
+///     <i>November 24, 2021</i>
+///   </span>
+/// </li>
+/// ```
+fn extract_issue_links(html: &str, html_issue_class: &str) -> HashMap<String, String> {
     let document = Html::parse_document(html);
-    let selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
+    let issue_selector = Selector::parse(&format!("li.{html_issue_class}")).unwrap();
+    let href_selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
+    let date_selector = Selector::parse(".chapter-release-date").unwrap();
 
-    let re = Regex::new(&format!(r"{}/?([^/]+)/?$", base)).unwrap();
+    document.select(&issue_selector)
+        .filter_map(|li| {
+            li.select(&href_selector)
+                .find_map(|href| {
+                    href.text().find_map(|t| {
+                        if t.trim().is_empty() {
+                            None
+                        } else {
+                            let title = t.trim().to_string();
+                            // The `href_selector` only matches on `href`; unwrap should be okay
+                            let url = href.value().attr("href").unwrap().to_string();
 
-    let mut links = HashMap::new();
+                            let date = li.select(&date_selector)
+                                .next()
+                                .map(|d| {
+                                    let text = d.text().collect::<String>().trim().to_string();
+                                    text
+                                });
+                            println!("{:?}", date);
 
-    for el in document.select(&selector) {
-        if let Some(mut url) = el.value().attr("href") {
-            url = url.trim();
-            if let Some(caps) = re.captures(url) {
-                let issue = &caps[1];
-                if let Some(prev) = links.insert(issue.to_owned(), url.to_owned()) {
-                    if prev != url {
-                        log::warn!("Duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
-                    }
-                } else {
-                    log::info!("Found issue: {}", issue);
-                }
-            }
-        }
-    }
-
-    links
+                            Some((title, url))
+                        }
+                    })
+                })
+        })
+        .map(|(issue, url)| (sanitize(issue), url))
+        .inspect(|(issue, url)| log::trace!("{}: {}", issue, url))
+        .collect()
 }
 
-pub async fn download_series(client: &Client, url: &str, html_image_class: &str, out_dir: &Path, dry: bool) {
+pub async fn download_series(client: &Client, url: &str, html_issue_class: &str, html_image_class: &str, out_dir: &Path, dry: bool) {
     log::info!("Fetching series {}", url);
     let text = get_html(client, url).await.unwrap();
-    let links = extract_issue_links(url, &text);
+    let links = extract_issue_links(&text, html_issue_class);
     log::info!("Found {} issues", links.len());
 
     let futures = links.iter().map(|(issue, link)| {

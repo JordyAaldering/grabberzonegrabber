@@ -10,7 +10,7 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
 }
 
 /// The html webpage is expected to contain all pages of the comic book, in order.
-/// These images are expected to have a unique html class.
+/// These images are expected to have a unique `img` class.
 ///
 /// ### Example
 ///
