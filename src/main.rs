@@ -16,10 +16,6 @@ struct Args {
     #[arg(long)]
     dry: bool,
 
-    /// Fetch only a single issue, not a whole collection.
-    #[arg(long)]
-    issue: bool,
-
     /// HTML class used to identify comic page images.
     #[arg(long, default_value = "wp-manga-chapter-img")]
     html_image_class: String,
@@ -83,38 +79,22 @@ async fn download_collection(client: &Client, url: &str, html_image_class: &str,
 async fn main() {
     env_logger::init();
 
-    let Args { dry, issue, html_image_class, out_dir, url } = Args::parse();
+    let Args { dry, html_image_class, out_dir, url } = Args::parse();
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0")
         .build()
         .unwrap();
 
-    if issue {
-        let mut iter = url.rsplit('/');
-        let issue_name = iter.find(|s| !s.is_empty()).unwrap_or("issue");
-        let out_dir = out_dir.unwrap_or_else(|| {
-            let collection_name = iter.next().unwrap_or("collection");
-            PathBuf::from(collection_name)
-        });
+    let out_dir = out_dir.unwrap_or_else(|| {
+        let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
+        PathBuf::from(collection_name)
+    });
 
-        if !dry {
-            log::info!("Writing to: {}", out_dir.display());
-            fs::create_dir_all(&out_dir).unwrap();
-        }
-
-        download_issue(&client, &url, &html_image_class, issue_name, &out_dir, dry).await.unwrap();
-    } else {
-        let out_dir = out_dir.unwrap_or_else(|| {
-            let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
-            PathBuf::from(collection_name)
-        });
-
-        if !dry {
-            log::info!("Writing to: {}", out_dir.display());
-            fs::create_dir_all(&out_dir).unwrap();
-        }
-
-        download_collection(&client, &url, &html_image_class, &out_dir, dry).await;
+    if !dry {
+        log::info!("Writing to: {}", out_dir.display());
+        fs::create_dir_all(&out_dir).unwrap();
     }
+
+    download_collection(&client, &url, &html_image_class, &out_dir, dry).await;
 }

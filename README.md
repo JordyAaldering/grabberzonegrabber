@@ -4,50 +4,6 @@ Automatically downloads comics from [grabber.zone](grabber.zone) and converts th
 
 ## TODO
 
-I think I can make this much easier.
-Seemingly, all pages are like:
-
-```html
-<div class="page-break ">
-    <img id="image-18" class="wp-manga-chapter-img img-responsive effect-fade lazyloaded" src=" https://grabber.zone/wp-content/uploads/WP-manga/data/manga_67dbf4d91a07e/37a3c8e0b803bc5b5515662bf919a30a/67269a1739590047b113727f1454781576.jpg">
-</div>
-```
-
-So no difficult pattern matching is needed to figure out which resources to filter, and how to extract the page number.
-We can just match on this specific structure.
-
-Overall, the comic view looks as:
-
-```html
-<div class="entry-content">
-    <div class="entry-content_wrap">
-        <div class="read-container">
-            <div class="reading-content">
-
-				<input type="hidden" id="wp-manga-current-chap" data-id="4079" value="chapter-1">
-
-                <div class="page-break ">
-                    <img id="image-0" class="wp-manga-chapter-img img-responsive effect-fade lazyloaded" src=" https://grabber.zone/wp-content/uploads/WP-manga/data/manga_67dbf4d91a07e/37a3c8e0b803bc5b5515662bf919a30a/67269a1732155511b113727f793295508.png">
-                </div>
-
-                <div class="page-break ">
-                    <img id="image-1" class="wp-manga-chapter-img img-responsive effect-fade lazyloaded" src=" https://grabber.zone/wp-content/uploads/WP-manga/data/manga_67dbf4d91a07e/37a3c8e0b803bc5b5515662bf919a30a/67269a1732155518b113727f1140490665.jpg">
-                </div>
-
-                ...
-
-                <div class="page-break ">
-                    <img id="image-41" class="wp-manga-chapter-img img-responsive effect-fade lazyloaded" src=" https://grabber.zone/wp-content/uploads/WP-manga/data/manga_67dbf4d91a07e/37a3c8e0b803bc5b5515662bf919a30a/67269a1747345465b113727f2002118714.jpg">
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
-```
-
-## TODO
-
 Similarly for extracting issues from a collection.
 
 ```html
