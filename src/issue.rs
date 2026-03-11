@@ -1,7 +1,7 @@
 use std::{fs::File, io::{Cursor, Write}, path::{Path, PathBuf}};
 
 use reqwest::Client;
-use scraper::{CaseSensitivity, Html, Selector};
+use scraper::{Html, Selector};
 use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
 async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
@@ -9,24 +9,27 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     resp.text().await
 }
 
+/// The html webpage is expected to contain all pages of the comic book, in order.
+/// These images are expected to have a unique html class.
+///
+/// ### Example
+///
+/// ```html
+/// <div class="page-break">
+///   <img id="image-0"
+///        class="wp-manga-chapter-img img-responsive effect-fade lazyloaded"
+///        src="https://grabber.zone/wp-content/uploads/WP-manga/data/manga_id/uid/image-0.jpg"
+///   >
+/// </div>
+/// ```
 fn extract_image_urls(html: &str, html_image_class: &str) -> Vec<String> {
     let document = Html::parse_document(html);
-    let selector = Selector::parse("img").unwrap();
-
-    // Images are assumed to appear in order
-    let mut imgs = Vec::new();
-
-    for el in document.select(&selector) {
-        let el = el.value();
-        if el.has_class(html_image_class, CaseSensitivity::AsciiCaseInsensitive) {
-            if let Some(src) = el.attr("data-src").or(el.attr("src")) {
-                log::trace!("Page {}: {}", imgs.len() + 1, src.trim());
-                imgs.push(src.trim().to_owned());
-            }
-        }
-    }
-
-    imgs
+    let selector = Selector::parse(&format!("img.{html_image_class}")).unwrap();
+    document.select(&selector)
+        .filter_map(|el| el.value().attr("data-src").or(el.value().attr("src")))
+        .map(|src| src.trim().to_owned())
+        .inspect(|src| log::trace!("Page: {}", src))
+        .collect()
 }
 
 async fn download_image(client: &Client, url: &str) -> reqwest::Result<Vec<u8>> {
