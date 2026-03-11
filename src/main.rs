@@ -1,14 +1,10 @@
 mod issue;
+mod series;
 
-use std::{collections::HashMap, fs, path::{Path, PathBuf}};
+use std::{fs, path::PathBuf};
 
 use clap::Parser;
-use futures::future;
-use regex::Regex;
 use reqwest::Client;
-use scraper::{Html, Selector};
-
-use crate::issue::download_issue;
 
 #[derive(Parser)]
 struct Args {
@@ -30,51 +26,6 @@ struct Args {
     url: String,
 }
 
-async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
-    let resp = client.get(url).send().await?;
-    resp.text().await
-}
-
-fn extract_issue_links(base: &str, html: &str) -> HashMap<String, String> {
-    let document = Html::parse_document(html);
-    let selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
-
-    let re = Regex::new(&format!(r"{}/?([^/]+)/?$", base)).unwrap();
-
-    let mut links = HashMap::new();
-
-    for el in document.select(&selector) {
-        if let Some(mut url) = el.value().attr("href") {
-            url = url.trim();
-            if let Some(caps) = re.captures(url) {
-                let issue = &caps[1];
-                if let Some(prev) = links.insert(issue.to_owned(), url.to_owned()) {
-                    if prev != url {
-                        log::warn!("Duplicate issue {} with mismatching URLs: {} and {}", issue, prev, url);
-                    }
-                } else {
-                    log::info!("Found issue: {}", issue);
-                }
-            }
-        }
-    }
-
-    links
-}
-
-async fn download_collection(client: &Client, url: &str, html_image_class: &str, out_dir: &Path, dry: bool) {
-    log::info!("Fetching collection {}", url);
-    let text = get_html(client, url).await.unwrap();
-    let links = extract_issue_links(url, &text);
-    log::info!("Found {} issues", links.len());
-
-    let futures = links.iter().map(|(issue, link)| {
-        download_issue(client, link, html_image_class, issue, out_dir, dry)
-    }).collect::<Vec<_>>();
-
-    future::join_all(futures).await;
-}
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -87,8 +38,8 @@ async fn main() {
         .unwrap();
 
     let out_dir = out_dir.unwrap_or_else(|| {
-        let collection_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("collection");
-        PathBuf::from(collection_name)
+        let series_name = url.rsplit('/').find(|s| !s.is_empty()).unwrap_or("series");
+        PathBuf::from(series_name)
     });
 
     if !dry {
@@ -96,5 +47,5 @@ async fn main() {
         fs::create_dir_all(&out_dir).unwrap();
     }
 
-    download_collection(&client, &url, &html_image_class, &out_dir, dry).await;
+    series::download_series(&client, &url, &html_image_class, &out_dir, dry).await;
 }
