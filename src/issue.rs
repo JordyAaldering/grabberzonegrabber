@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::File, io::{Cursor, Write}, path::{Path, Path
 use regex::Regex;
 use reqwest::Client;
 use scraper::{Html, Selector};
-use zip::{ZipWriter, write::SimpleFileOptions};
+use zip::{CompressionMethod, ZipWriter, write::SimpleFileOptions};
 
 async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
     let resp = client.get(url).send().await?;
@@ -77,7 +77,9 @@ pub async fn download_issue(client: &Client, url: &str, re: &Regex, issue_name: 
     // Write to buffer first, only write to disk if successful to avoid partial files
     let buffer = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(buffer);
-    let options = SimpleFileOptions::default();
+    // WebP images are already compressed, so create the cbz without compression
+    let options = SimpleFileOptions::default()
+        .compression_method(CompressionMethod::Stored);
 
     for (page, img) in imgs {
         log::trace!("Downloading {}", img);
