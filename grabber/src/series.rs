@@ -41,7 +41,6 @@ fn extract_issue_links(html: &str, html_issue_class: &str) -> HashMap<String, St
     let document = Html::parse_document(html);
     let issue_selector = Selector::parse(&format!("li.{html_issue_class}")).unwrap();
     let href_selector = Selector::parse(r#"a[href]:not([href^="javascript:"])"#).unwrap();
-    let date_selector = Selector::parse(".chapter-release-date").unwrap();
 
     document.select(&issue_selector)
         .filter_map(|li| {
@@ -54,15 +53,6 @@ fn extract_issue_links(html: &str, html_issue_class: &str) -> HashMap<String, St
                             let title = t.trim().to_string();
                             // The `href_selector` only matches on `href`; unwrap should be okay
                             let url = href.value().attr("href").unwrap().to_string();
-
-                            let date = li.select(&date_selector)
-                                .next()
-                                .map(|d| {
-                                    let text = d.text().collect::<String>().trim().to_string();
-                                    text
-                                });
-                            println!("{:?}", date);
-
                             Some((title, url))
                         }
                     })
