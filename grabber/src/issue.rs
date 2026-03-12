@@ -90,6 +90,7 @@ pub async fn download_issue(client: &Client, url: &str, html_image_class: &str, 
     // Write ComicInfo.xml
     let comic_info = comicinfo::ComicInfo {
         title: Some(issue_name.to_owned()),
+        language_iso: Some("en".to_owned()),
         page_count: Some(page_count),
         ..Default::default()
     };

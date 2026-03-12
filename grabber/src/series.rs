@@ -15,7 +15,7 @@ async fn get_html(client: &Client, url: &str) -> reqwest::Result<String> {
 /// The series webpage is expected to contain a list of all issues of the comic book.
 /// These issues are expected to have a unique `li` class.
 ///
-/// If possible, we extract the human-readable name and date.
+/// If possible, we extract the human-readable issue name.
 ///
 /// ### Example
 ///

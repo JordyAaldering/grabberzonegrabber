@@ -2,40 +2,47 @@ use serde::{Serialize, Serializer};
 
 use crate::serialize_yes_no;
 
+/// Wrapper to holds all pages of the book.
+#[derive(Clone, Default, Serialize)]
+pub struct ArrayOfComicPageInfo {
+    #[serde(rename = "Page")]
+    pub pages: Vec<ComicPageInfo>,
+}
+
 /// Describes each page of the book.
-#[derive(Clone, Default)]
-#[derive(Serialize)]
-#[serde(rename = "ComicPageInfo", rename_all = "PascalCase")]
+#[derive(Clone, Default, Serialize)]
+#[serde(rename = "Page")]
 pub struct ComicPageInfo {
     /// Page number.
+    #[serde(rename = "@Image")]
     pub image: usize,
 
     /// Type of the page.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Type", skip_serializing_if = "Option::is_none")]
     pub r#type: Option<ComicPageType>,
 
     /// Whether the page is a double spread.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no")]
+    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no")]
     pub double_page: Option<bool>,
 
     /// Width of the image in pixels.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@ImageWidth", skip_serializing_if = "Option::is_none")]
     pub image_width: Option<usize>,
 
     /// Height of the image in pixels.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@ImageHeight", skip_serializing_if = "Option::is_none")]
     pub image_height: Option<usize>,
 
     /// File size of the image, supposedly in bytes.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@FileSize", skip_serializing_if = "Option::is_none")]
     pub file_size: Option<usize>,
 
     /// ComicRack uses this field when adding a bookmark in a book.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Bookmark", skip_serializing_if = "Option::is_none")]
     pub bookmark: Option<String>,
 
     /// Unknown.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Key", skip_serializing_if = "Option::is_none")]
     pub key: Option<String>,
 }
 

@@ -1,37 +1,43 @@
 use serde::{Serialize, Serializer};
 
-use crate::{ComicPageInfo, serialize_vec_csv, serialize_yes_no};
+use crate::{ArrayOfComicPageInfo, serialize_vec_csv, serialize_yes_no};
 
 /// The `ComicInfo.xml` file originates from the ComicRack application, which is not developed anymore.
 /// The `ComicInfo.xml` however is used by a variety of applications.
-#[derive(Clone, Default)]
-#[derive(Serialize)]
+#[derive(Clone, Default, Serialize)]
 #[serde(rename = "ComicInfo", rename_all = "PascalCase")]
 pub struct ComicInfo {
     /// Title of the book.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+
     /// A group or collection the series belongs to.
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
     pub series_group: Option<Vec<String>>,
+
     /// Title of the series the book is part of.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub series: Option<String>,
+
     /// Number of the book in the series.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<usize>,
+
     /// The total number of books in the series.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<usize>,
+
     /// Volume containing the book.
     ///
     /// Volume is a notion that is specific to US comics, where the same series can have multiple volumes.
     /// Volumes can be referenced by number (1, 2, 3, …) or by year (2018, 2020, …).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<Volume>,
+
     /// The story arc that books belong to.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub story_arc: Option<String>,
+
     /// While StoryArc was originally designed to store the arc within a series, it was often used to
     /// indicate that a book was part of a reading order, composed of books from multiple series.
     /// Mylar for instance was using the field as such.
@@ -43,6 +49,7 @@ pub struct ComicInfo {
     /// It is accepted that multiple values can be specified for both StoryArc and StoryArcNumber. Multiple values are comma separated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub story_arc_number: Option<usize>,
+
     /// The number of pages in the book.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page_count: Option<usize>,
@@ -136,18 +143,15 @@ pub struct ComicInfo {
     pub imprint: Option<String>,
 
     /// Genre of the book or series. For example, Science-Fiction or Shonen.
-    ///
-    /// It is accepted that multiple values are comma separated.
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
     pub genre: Option<Vec<String>>,
+
     /// Tags of the book or series. For example, ninja or school life.
-    ///
-    /// It is accepted that multiple values are comma separated.
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
     pub tags: Option<Vec<String>>,
+
     /// A URL pointing to a reference website for the book.
     ///
-    /// It is accepted that multiple values are space separated.
     /// If a space is a part of the url it must be [percent encoded](https://datatracker.ietf.org/doc/html/rfc2396#section-2.4.1).
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
     pub url: Option<Vec<String>>,
@@ -168,6 +172,7 @@ pub struct ComicInfo {
     ///  * [Language subtag lookup app](https://r12a.github.io/app-subtags/)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language_iso: Option<String>,
+
     /// The original publication's binding format for scanned physical books or presentation format for digital sources.
     ///
     /// `TBP`, `HC`, `Web`, `Digital` are common designators.
@@ -177,6 +182,7 @@ pub struct ComicInfo {
     /// Whether the book is in black and white.
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no")]
     pub black_and_white: Option<bool>,
+
     /// Whether the book is a manga.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub manga: Option<Manga>,
@@ -199,7 +205,7 @@ pub struct ComicInfo {
 
     /// Describes each page of the book.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pages: Option<Vec<ComicPageInfo>>,
+    pub pages: Option<ArrayOfComicPageInfo>,
 }
 
 #[derive(Copy, Clone)]
@@ -317,6 +323,6 @@ impl Serialize for Month {
     where
         S: Serializer,
     {
-        serializer.serialize_u8(*self as u8)
+        serializer.serialize_str(&format!("{:02}", *self as u8))
     }
 }
