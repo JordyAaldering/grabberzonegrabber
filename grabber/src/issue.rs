@@ -51,7 +51,8 @@ pub async fn download_issue(client: &Client, url: &str, html_image_class: &str, 
     log::info!("Fetching issue {} from {}", issue_name, url);
     let text = get_html(&client, &url).await.unwrap();
     let imgs = extract_image_urls(&text, html_image_class);
-    log::info!("Found {} images for {}", imgs.len(), url);
+    let page_count = imgs.len();
+    log::info!("Found {} images for {}", page_count, url);
 
     if imgs.is_empty() {
         log::warn!("No images found for {}", url);
@@ -85,6 +86,15 @@ pub async fn download_issue(client: &Client, url: &str, html_image_class: &str, 
         zip.start_file(name, options)?;
         zip.write_all(&img_data)?;
     }
+
+    // Write ComicInfo.xml
+    let comic_info = comicinfo::ComicInfo {
+        title: Some(issue_name.to_owned()),
+        page_count: Some(page_count),
+        ..Default::default()
+    };
+    zip.start_file("ComicInfo.xml", options)?;
+    quick_xml::se::to_utf8_io_writer(&mut zip, &comic_info).unwrap();
 
     log::info!("Writing to cbz {}", cbz_dst.display());
     let buffer = zip.finish()?;
