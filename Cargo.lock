@@ -781,8 +781,11 @@ dependencies = [
 name = "cbzedit"
 version = "0.1.0"
 dependencies = [
+ "comicinfo",
  "eframe",
  "egui-file-dialog",
+ "quick-xml 0.39.2",
+ "zip",
 ]
 
 [[package]]

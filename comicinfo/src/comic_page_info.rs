@@ -3,15 +3,18 @@ use serde::{Deserialize, Serialize, Serializer};
 use crate::{serialize_yes_no, deserialize_yes_no};
 
 /// Wrapper to holds all pages of the book.
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(default, rename = "ArrayOfComicPageInfo")]
 pub struct ArrayOfComicPageInfo {
     #[serde(rename = "Page")]
     pub pages: Vec<ComicPageInfo>,
 }
 
 /// Describes each page of the book.
-#[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(rename = "Page")]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(default, rename = "Page")]
 pub struct ComicPageInfo {
     /// Page number.
     #[serde(rename = "@Image")]
@@ -47,7 +50,7 @@ pub struct ComicPageInfo {
 }
 
 /// Type of a comic book page.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ComicPageType {
     /// The front cover of the book.
     FrontCover,

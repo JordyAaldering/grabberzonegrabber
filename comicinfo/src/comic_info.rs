@@ -4,8 +4,9 @@ use crate::{ArrayOfComicPageInfo, deserialize_vec_csv, deserialize_yes_no, seria
 
 /// The `ComicInfo.xml` file originates from the ComicRack application, which is not developed anymore.
 /// The `ComicInfo.xml` however is used by a variety of applications.
-#[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(rename = "ComicInfo", rename_all = "PascalCase")]
+#[derive(Clone, Default, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(default, rename = "ComicInfo", rename_all = "PascalCase")]
 pub struct ComicInfo {
     /// Title of the book.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -208,7 +209,8 @@ pub struct ComicInfo {
     pub pages: Option<ArrayOfComicPageInfo>,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Manga {
     #[serde(rename = "No")]
     No,
@@ -220,7 +222,8 @@ pub enum Manga {
     Unknown,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum AgeRating {
     #[serde(rename = "AdultsOnly18+")]
     AdultsOnly18Plus,
@@ -275,7 +278,7 @@ impl<'de> Deserialize<'de> for CommunityRating {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Month {
     Jan = 1,
     Feb,
