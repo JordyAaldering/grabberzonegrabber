@@ -21,7 +21,7 @@ impl eframe::App for App {
 
                 ui.menu_button("File", |ui| {
                     if ui.button("Open").clicked() {
-                        println!("Open");
+                        self.file_dialog.pick_multiple();
                     }
 
                     if ui.button("Close").clicked() {
@@ -30,6 +30,11 @@ impl eframe::App for App {
                 });
             });
         });
+
+        self.file_dialog.update(ctx);
+        if let Some(files) = self.file_dialog.take_picked_multiple() {
+            println!("Selected files: {:?}", files);
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Hello, World!");
