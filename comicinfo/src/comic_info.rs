@@ -1,10 +1,10 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
-use crate::{ArrayOfComicPageInfo, serialize_vec_csv, serialize_yes_no};
+use crate::{ArrayOfComicPageInfo, deserialize_vec_csv, deserialize_yes_no, serialize_vec_csv, serialize_yes_no};
 
 /// The `ComicInfo.xml` file originates from the ComicRack application, which is not developed anymore.
 /// The `ComicInfo.xml` however is used by a variety of applications.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename = "ComicInfo", rename_all = "PascalCase")]
 pub struct ComicInfo {
     /// Title of the book.
@@ -12,7 +12,7 @@ pub struct ComicInfo {
     pub title: Option<String>,
 
     /// A group or collection the series belongs to.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub series_group: Option<Vec<String>>,
 
     /// Title of the series the book is part of.
@@ -32,7 +32,7 @@ pub struct ComicInfo {
     /// Volume is a notion that is specific to US comics, where the same series can have multiple volumes.
     /// Volumes can be referenced by number (1, 2, 3, …) or by year (2018, 2020, …).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub volume: Option<Volume>,
+    pub volume: Option<usize>,
 
     /// The story arc that books belong to.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,40 +100,40 @@ pub struct ComicInfo {
     pub reviews: Option<String>,
 
     /// Person or organization responsible for creating the scenario.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub writer: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing the art.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub penciller: Option<Vec<String>>,
 
     /// Person or organization responsible for inking the pencil art.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub inker: Option<Vec<String>>,
 
     /// Person or organization responsible for applying color to drawings.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub colorist: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing text and speech bubbles.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub letterer: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing the cover art.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub cover_artist: Option<Vec<String>>,
 
     /// A person or organization contributing to a resource by revising or elucidating the content, e.g., adding an introduction, notes, or other critical matter.
     /// An editor may also prepare a resource for production, publication, or distribution.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub editor: Option<Vec<String>>,
 
     /// A person or organization who renders a text from one language into another, or from an older form of a language into the modern form.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub translator: Option<Vec<String>>,
 
     /// A person or organization responsible for publishing, releasing, or issuing a resource.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub publisher: Option<Vec<String>>,
 
     /// An imprint is a group of publications under the umbrella of a larger imprint or a Publisher.
@@ -143,17 +143,17 @@ pub struct ComicInfo {
     pub imprint: Option<String>,
 
     /// Genre of the book or series. For example, Science-Fiction or Shonen.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub genre: Option<Vec<String>>,
 
     /// Tags of the book or series. For example, ninja or school life.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub tags: Option<Vec<String>>,
 
     /// A URL pointing to a reference website for the book.
     ///
     /// If a space is a part of the url it must be [percent encoded](https://datatracker.ietf.org/doc/html/rfc2396#section-2.4.1).
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub url: Option<Vec<String>>,
 
     /// A [Global Trade Item Number](https://en.wikipedia.org/wiki/Global_Trade_Item_Number) identifying the book.
@@ -180,7 +180,7 @@ pub struct ComicInfo {
     pub format: Option<String>,
 
     /// Whether the book is in black and white.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no", deserialize_with = "deserialize_yes_no")]
     pub black_and_white: Option<bool>,
 
     /// Whether the book is a manga.
@@ -188,15 +188,15 @@ pub struct ComicInfo {
     pub manga: Option<Manga>,
 
     /// Characters present in the book.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub characters: Option<Vec<String>>,
 
     /// Teams present in the book.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub teams: Option<Vec<String>>,
 
     /// Locations mentioned in the book.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv")]
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
     pub locations: Option<Vec<String>>,
 
     /// Main character or team mentioned in the book.
@@ -208,87 +208,48 @@ pub struct ComicInfo {
     pub pages: Option<ArrayOfComicPageInfo>,
 }
 
-#[derive(Copy, Clone)]
-pub enum Volume {
-    Number(usize),
-    Year(u16),
-}
-
-impl Serialize for Volume {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use Volume::*;
-        match *self {
-            Number(n) => serializer.serialize_u64(n as u64),
-            Year(y) => serializer.serialize_u16(y),
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Manga {
+    #[serde(rename = "No")]
     No,
+    #[serde(rename = "Yes")]
     Yes,
+    #[serde(rename = "YesAndRightToLeft")]
     YesAndRightToLeft,
+    #[serde(rename = "Unknown")]
+    Unknown,
 }
 
-impl Serialize for Manga {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use Manga::*;
-        match *self {
-            No => serializer.serialize_str("No"),
-            Yes => serializer.serialize_str("Yes"),
-            YesAndRightToLeft => serializer.serialize_str("YesAndRightToLeft"),
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum AgeRating {
+    #[serde(rename = "AdultsOnly18+")]
     AdultsOnly18Plus,
+    #[serde(rename = "EarlyChildhood")]
     EarlyChildhood,
+    #[serde(rename = "Everyone")]
     Everyone,
+    #[serde(rename = "Everyone10+")]
     Everyone10Plus,
+    #[serde(rename = "G")]
     G,
+    #[serde(rename = "KidsToAdults")]
     KidsToAdults,
+    #[serde(rename = "M")]
     M,
+    #[serde(rename = "MA15+")]
     MA15Plus,
+    #[serde(rename = "Mature17+")]
     Mature17Plus,
+    #[serde(rename = "PG")]
     PG,
+    #[serde(rename = "R18+")]
     R18Plus,
+    #[serde(rename = "RatingPending")]
     RatingPending,
+    #[serde(rename = "Teen")]
     Teen,
+    #[serde(rename = "X18+")]
     X18Plus,
-}
-
-impl Serialize for AgeRating {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use AgeRating::*;
-        match *self {
-            AdultsOnly18Plus => serializer.serialize_str("AdultsOnly18+"),
-            EarlyChildhood => serializer.serialize_str("EarlyChildhood"),
-            Everyone => serializer.serialize_str("Everyone"),
-            Everyone10Plus => serializer.serialize_str("Everyone10+"),
-            G => serializer.serialize_str("G"),
-            KidsToAdults => serializer.serialize_str("KidsToAdults"),
-            M => serializer.serialize_str("M"),
-            MA15Plus => serializer.serialize_str("MA15+"),
-            Mature17Plus => serializer.serialize_str("Mature17+"),
-            PG => serializer.serialize_str("PG"),
-            R18Plus => serializer.serialize_str("R18+"),
-            RatingPending => serializer.serialize_str("RatingPending"),
-            Teen => serializer.serialize_str("Teen"),
-            X18Plus => serializer.serialize_str("X18+"),
-        }
-    }
 }
 
 pub struct CommunityRating(pub f32);
@@ -299,6 +260,18 @@ impl Serialize for CommunityRating {
         S: Serializer,
     {
         serializer.serialize_str(&format!("{:.1}", self.0))
+    }
+}
+
+impl<'de> Deserialize<'de> for CommunityRating {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<f32>()
+            .map(CommunityRating)
+            .map_err(|e| serde::de::Error::custom(format!("Failed to parse community rating: {}", e)))
     }
 }
 
@@ -324,5 +297,28 @@ impl Serialize for Month {
         S: Serializer,
     {
         serializer.serialize_str(&format!("{:02}", *self as u8))
+    }
+}
+
+impl<'de> Deserialize<'de> for Month {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match String::deserialize(deserializer)?.as_str() {
+            "1" | "01" | "Jan" | "January"   => Ok(Month::Jan),
+            "2" | "02" | "Feb" | "February"  => Ok(Month::Feb),
+            "3" | "03" | "Mar" | "March"     => Ok(Month::Mar),
+            "4" | "04" | "Apr" | "April"     => Ok(Month::Apr),
+            "5" | "05" | "May"               => Ok(Month::May),
+            "6" | "06" | "Jun" | "June"      => Ok(Month::Jun),
+            "7" | "07" | "Jul" | "July"      => Ok(Month::Jul),
+            "8" | "08" | "Aug" | "August"    => Ok(Month::Aug),
+            "9" | "09" | "Sep" | "September" => Ok(Month::Sep),
+            "10" | "Oct" | "October"         => Ok(Month::Oct),
+            "11" | "Nov" | "November"        => Ok(Month::Nov),
+            "12" | "Dec" | "December"        => Ok(Month::Dec),
+            other => Err(serde::de::Error::custom(format!("Invalid month: {}", other))),
+        }
     }
 }

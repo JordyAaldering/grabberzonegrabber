@@ -1,16 +1,16 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 
-use crate::serialize_yes_no;
+use crate::{serialize_yes_no, deserialize_yes_no};
 
 /// Wrapper to holds all pages of the book.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ArrayOfComicPageInfo {
     #[serde(rename = "Page")]
     pub pages: Vec<ComicPageInfo>,
 }
 
 /// Describes each page of the book.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(rename = "Page")]
 pub struct ComicPageInfo {
     /// Page number.
@@ -22,7 +22,7 @@ pub struct ComicPageInfo {
     pub r#type: Option<ComicPageType>,
 
     /// Whether the page is a double spread.
-    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no")]
+    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no", deserialize_with = "deserialize_yes_no")]
     pub double_page: Option<bool>,
 
     /// Width of the image in pixels.
@@ -91,6 +91,29 @@ impl Serialize for ComicPageType {
             BackCover     => serializer.serialize_str("BackCover"),
             Other         => serializer.serialize_str("Other"),
             Deleted       => serializer.serialize_str("Deleted"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ComicPageType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use ComicPageType::*;
+        match String::deserialize(deserializer)?.as_str() {
+            "FrontCover"    => Ok(FrontCover),
+            "InnerCover"    => Ok(InnerCover),
+            "Roundup"       => Ok(Roundup),
+            "Story"         => Ok(Story),
+            "Advertisement" => Ok(Advertisement),
+            "Editorial"     => Ok(Editorial),
+            "Letters"       => Ok(Letters),
+            "Preview"       => Ok(Preview),
+            "BackCover"     => Ok(BackCover),
+            "Other"         => Ok(Other),
+            "Deleted"       => Ok(Deleted),
+            other           => Err(serde::de::Error::custom(format!("Unknown page type '{}'", other))),
         }
     }
 }
