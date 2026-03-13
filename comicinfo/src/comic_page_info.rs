@@ -51,7 +51,7 @@ pub struct Page {
 }
 
 /// Type of a comic book page.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum ComicPageType {

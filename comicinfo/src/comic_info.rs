@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-use crate::ArrayOfComicPageInfo;
+use crate::{AgeRating, ArrayOfComicPageInfo, CommunityRating, Manga, Month, YesNo};
 
 #[allow(unused)]
 type CsvVec = Option<StringWithSeparator<CommaSeparator, String>>;
@@ -78,7 +78,7 @@ pub struct ComicInfo {
     pub age_rating: Option<AgeRating>,
 
     /// Community rating of the book, from 0.0 to 5.0.
-    pub community_rating: Option<f32>,
+    pub community_rating: Option<CommunityRating>,
 
     /// A description or summary of the book.
     pub description: Option<String>,
@@ -192,126 +192,4 @@ pub struct ComicInfo {
 
     /// Describes each page of the book.
     pub pages: Option<ArrayOfComicPageInfo>,
-}
-
-#[derive(Copy, Clone, Debug)]
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum YesNo {
-    No,
-    Yes,
-    Unknown,
-}
-
-#[derive(Copy, Clone, Debug)]
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum Manga {
-    No,
-    Yes,
-    YesAndRightToLeft,
-    Unknown,
-}
-
-#[derive(Copy, Clone, Debug)]
-#[derive(Serialize, Deserialize)]
-pub enum AgeRating {
-    #[serde(rename = "AdultsOnly18+")]
-    AdultsOnly18Plus,
-    #[serde(rename = "EarlyChildhood")]
-    EarlyChildhood,
-    #[serde(rename = "Everyone")]
-    Everyone,
-    #[serde(rename = "Everyone10+")]
-    Everyone10Plus,
-    #[serde(rename = "G")]
-    G,
-    #[serde(rename = "KidsToAdults")]
-    KidsToAdults,
-    #[serde(rename = "M")]
-    M,
-    #[serde(rename = "MA15+")]
-    MA15Plus,
-    #[serde(rename = "Mature17+")]
-    Mature17Plus,
-    #[serde(rename = "PG")]
-    PG,
-    #[serde(rename = "R18+")]
-    R18Plus,
-    #[serde(rename = "RatingPending")]
-    RatingPending,
-    #[serde(rename = "Teen")]
-    Teen,
-    #[serde(rename = "X18+")]
-    X18Plus,
-}
-
-pub struct CommunityRating(pub f32);
-
-impl Serialize for CommunityRating {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{:.1}", self.0))
-    }
-}
-
-impl<'de> Deserialize<'de> for CommunityRating {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        String::deserialize(deserializer)?
-            .parse::<f32>()
-            .map(CommunityRating)
-            .map_err(|e| serde::de::Error::custom(format!("Failed to parse community rating: {}", e)))
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-#[derive(Serialize)]
-#[serde(into = "u8")]
-pub enum Month {
-    Jan = 1,
-    Feb,
-    Mar,
-    Apr,
-    May,
-    Jun,
-    Jul,
-    Aug,
-    Sep,
-    Oct,
-    Nov,
-    Dec,
-}
-
-impl From<Month> for u8 {
-    fn from(m: Month) -> Self {
-        m as u8
-    }
-}
-
-impl<'de> Deserialize<'de> for Month {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        match String::deserialize(deserializer)?.to_lowercase().as_str() {
-            "1" | "01" | "jan" | "january"   => Ok(Month::Jan),
-            "2" | "02" | "feb" | "february"  => Ok(Month::Feb),
-            "3" | "03" | "mar" | "march"     => Ok(Month::Mar),
-            "4" | "04" | "apr" | "april"     => Ok(Month::Apr),
-            "5" | "05" | "may"               => Ok(Month::May),
-            "6" | "06" | "jun" | "june"      => Ok(Month::Jun),
-            "7" | "07" | "jul" | "july"      => Ok(Month::Jul),
-            "8" | "08" | "aug" | "august"    => Ok(Month::Aug),
-            "9" | "09" | "sep" | "september" => Ok(Month::Sep),
-                  "10" | "oct" | "october"   => Ok(Month::Oct),
-                  "11" | "nov" | "november"  => Ok(Month::Nov),
-                  "12" | "dec" | "december"  => Ok(Month::Dec),
-            other => Err(serde::de::Error::custom(format!("Invalid month: {}", other))),
-        }
-    }
 }
