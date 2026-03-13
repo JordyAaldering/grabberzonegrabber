@@ -13,7 +13,7 @@ struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
-            file_dialog: FileDialog::new(),
+            file_dialog: FileDialog::new().add_file_filter_extensions("Comics", vec!["cbz"]).default_file_filter("Comics"),
             opened_files: Vec::new(),
         }
     }
