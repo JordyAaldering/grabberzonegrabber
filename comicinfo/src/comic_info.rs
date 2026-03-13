@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::{ArrayOfComicPageInfo, deserialize_vec_csv, deserialize_yes_no, serialize_vec_csv, serialize_yes_no};
+use crate::{ArrayOfComicPageInfo, deserialize_vec_csv, serialize_vec_csv};
 
 /// The `ComicInfo.xml` file originates from the ComicRack application, which is not developed anymore.
 /// The `ComicInfo.xml` however is used by a variety of applications.
@@ -187,8 +187,8 @@ pub struct ComicInfo {
     pub format: Option<String>,
 
     /// Whether the book is in black and white.
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no", deserialize_with = "deserialize_yes_no")]
-    pub black_and_white: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub black_and_white: Option<YesNo>,
 
     /// Whether the book is a manga.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -217,14 +217,20 @@ pub struct ComicInfo {
 
 #[derive(Copy, Clone, Debug)]
 #[derive(Serialize, Deserialize)]
-pub enum Manga {
-    #[serde(rename = "No")]
+#[serde(rename_all = "PascalCase")]
+pub enum YesNo {
     No,
-    #[serde(rename = "Yes")]
     Yes,
-    #[serde(rename = "YesAndRightToLeft")]
+    Unknown,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum Manga {
+    No,
+    Yes,
     YesAndRightToLeft,
-    #[serde(rename = "Unknown")]
     Unknown,
 }
 
@@ -285,6 +291,8 @@ impl<'de> Deserialize<'de> for CommunityRating {
 }
 
 #[derive(Copy, Clone, Debug)]
+#[derive(Serialize)]
+#[serde(into = "u8")]
 pub enum Month {
     Jan = 1,
     Feb,
@@ -300,12 +308,9 @@ pub enum Month {
     Dec,
 }
 
-impl Serialize for Month {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{:02}", *self as u8))
+impl From<Month> for u8 {
+    fn from(m: Month) -> Self {
+        m as u8
     }
 }
 
@@ -314,19 +319,19 @@ impl<'de> Deserialize<'de> for Month {
     where
         D: serde::Deserializer<'de>,
     {
-        match String::deserialize(deserializer)?.as_str() {
-            "1" | "01" | "Jan" | "January"   => Ok(Month::Jan),
-            "2" | "02" | "Feb" | "February"  => Ok(Month::Feb),
-            "3" | "03" | "Mar" | "March"     => Ok(Month::Mar),
-            "4" | "04" | "Apr" | "April"     => Ok(Month::Apr),
-            "5" | "05" | "May"               => Ok(Month::May),
-            "6" | "06" | "Jun" | "June"      => Ok(Month::Jun),
-            "7" | "07" | "Jul" | "July"      => Ok(Month::Jul),
-            "8" | "08" | "Aug" | "August"    => Ok(Month::Aug),
-            "9" | "09" | "Sep" | "September" => Ok(Month::Sep),
-            "10" | "Oct" | "October"         => Ok(Month::Oct),
-            "11" | "Nov" | "November"        => Ok(Month::Nov),
-            "12" | "Dec" | "December"        => Ok(Month::Dec),
+        match String::deserialize(deserializer)?.to_lowercase().as_str() {
+            "1" | "01" | "jan" | "january"   => Ok(Month::Jan),
+            "2" | "02" | "feb" | "february"  => Ok(Month::Feb),
+            "3" | "03" | "mar" | "march"     => Ok(Month::Mar),
+            "4" | "04" | "apr" | "april"     => Ok(Month::Apr),
+            "5" | "05" | "may"               => Ok(Month::May),
+            "6" | "06" | "jun" | "june"      => Ok(Month::Jun),
+            "7" | "07" | "jul" | "july"      => Ok(Month::Jul),
+            "8" | "08" | "aug" | "august"    => Ok(Month::Aug),
+            "9" | "09" | "sep" | "september" => Ok(Month::Sep),
+                  "10" | "oct" | "october"   => Ok(Month::Oct),
+                  "11" | "nov" | "november"  => Ok(Month::Nov),
+                  "12" | "dec" | "december"  => Ok(Month::Dec),
             other => Err(serde::de::Error::custom(format!("Invalid month: {}", other))),
         }
     }

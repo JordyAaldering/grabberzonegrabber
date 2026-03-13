@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-use crate::{serialize_yes_no, deserialize_yes_no};
+use crate::YesNo;
 
 /// Wrapper to holds all pages of the book.
 #[derive(Clone, Default, Debug)]
@@ -8,14 +8,14 @@ use crate::{serialize_yes_no, deserialize_yes_no};
 #[serde(default, rename = "ArrayOfComicPageInfo")]
 pub struct ArrayOfComicPageInfo {
     #[serde(rename = "Page")]
-    pub pages: Vec<ComicPageInfo>,
+    pub pages: Vec<Page>,
 }
 
 /// Describes each page of the book.
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]
 #[serde(default, rename = "Page")]
-pub struct ComicPageInfo {
+pub struct Page {
     /// Page number.
     #[serde(rename = "@Image")]
     pub image: usize,
@@ -25,8 +25,8 @@ pub struct ComicPageInfo {
     pub r#type: Option<ComicPageType>,
 
     /// Whether the page is a double spread.
-    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none", serialize_with = "serialize_yes_no", deserialize_with = "deserialize_yes_no")]
-    pub double_page: Option<bool>,
+    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none")]
+    pub double_page: Option<YesNo>,
 
     /// Width of the image in pixels.
     #[serde(rename = "@ImageWidth", skip_serializing_if = "Option::is_none")]
@@ -51,6 +51,8 @@ pub struct ComicPageInfo {
 
 /// Type of a comic book page.
 #[derive(Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum ComicPageType {
     /// The front cover of the book.
     FrontCover,
@@ -74,49 +76,4 @@ pub enum ComicPageType {
     Other,
     /// Indicates that the page should not be shown.
     Deleted,
-}
-
-impl Serialize for ComicPageType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use ComicPageType::*;
-        match *self {
-            FrontCover    => serializer.serialize_str("FrontCover"),
-            InnerCover    => serializer.serialize_str("InnerCover"),
-            Roundup       => serializer.serialize_str("Roundup"),
-            Story         => serializer.serialize_str("Story"),
-            Advertisement => serializer.serialize_str("Advertisement"),
-            Editorial     => serializer.serialize_str("Editorial"),
-            Letters       => serializer.serialize_str("Letters"),
-            Preview       => serializer.serialize_str("Preview"),
-            BackCover     => serializer.serialize_str("BackCover"),
-            Other         => serializer.serialize_str("Other"),
-            Deleted       => serializer.serialize_str("Deleted"),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for ComicPageType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        use ComicPageType::*;
-        match String::deserialize(deserializer)?.as_str() {
-            "FrontCover"    => Ok(FrontCover),
-            "InnerCover"    => Ok(InnerCover),
-            "Roundup"       => Ok(Roundup),
-            "Story"         => Ok(Story),
-            "Advertisement" => Ok(Advertisement),
-            "Editorial"     => Ok(Editorial),
-            "Letters"       => Ok(Letters),
-            "Preview"       => Ok(Preview),
-            "BackCover"     => Ok(BackCover),
-            "Other"         => Ok(Other),
-            "Deleted"       => Ok(Deleted),
-            other           => Err(serde::de::Error::custom(format!("Unknown page type '{}'", other))),
-        }
-    }
 }
