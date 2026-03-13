@@ -15,37 +15,38 @@ pub struct ArrayOfComicPageInfo {
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]
 #[serde(default, rename = "Page")]
+#[serde_with::skip_serializing_none]
 pub struct Page {
     /// Page number.
     #[serde(rename = "@Image")]
     pub image: usize,
 
     /// Type of the page.
-    #[serde(rename = "@Type", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Type")]
     pub r#type: Option<ComicPageType>,
 
     /// Whether the page is a double spread.
-    #[serde(rename = "@DoublePage", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@DoublePage")]
     pub double_page: Option<YesNo>,
 
     /// Width of the image in pixels.
-    #[serde(rename = "@ImageWidth", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@ImageWidth")]
     pub image_width: Option<usize>,
 
     /// Height of the image in pixels.
-    #[serde(rename = "@ImageHeight", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@ImageHeight")]
     pub image_height: Option<usize>,
 
     /// File size of the image, supposedly in bytes.
-    #[serde(rename = "@FileSize", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@FileSize")]
     pub file_size: Option<usize>,
 
     /// ComicRack uses this field when adding a bookmark in a book.
-    #[serde(rename = "@Bookmark", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Bookmark")]
     pub bookmark: Option<String>,
 
     /// Unknown.
-    #[serde(rename = "@Key", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "@Key")]
     pub key: Option<String>,
 }
 
