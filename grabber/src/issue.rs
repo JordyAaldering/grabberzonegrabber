@@ -71,8 +71,8 @@ pub async fn download_issue(client: &Client, url: &str, html_image_class: &str, 
 
     log::info!("Merging images of {}", issue_name);
     // Write to buffer first, only write to disk if successful to avoid partial files
-    let buffer = Cursor::new(Vec::new());
-    let mut zip = ZipWriter::new(buffer);
+    let buf = Cursor::new(Vec::new());
+    let mut zip = ZipWriter::new(buf);
     // WebP images are already compressed, so create the cbz without compression
     let options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Stored);
@@ -94,13 +94,13 @@ pub async fn download_issue(client: &Client, url: &str, html_image_class: &str, 
         page_count: Some(page_count),
         ..Default::default()
     };
-    zip.start_file("ComicInfo.xml", options)?;
+    zip.start_file("ComicInfo.xml", SimpleFileOptions::default())?;
     quick_xml::se::to_utf8_io_writer(&mut zip, &comic_info).unwrap();
 
     log::info!("Writing to cbz {}", cbz_dst.display());
-    let buffer = zip.finish()?;
+    let buf = zip.finish()?;
     let mut file = File::create(&cbz_dst)?;
-    file.write_all(&buffer.into_inner())?;
+    file.write_all(&buf.into_inner())?;
 
     Ok(())
 }

@@ -24,7 +24,7 @@ pub struct ComicInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number: Option<usize>,
 
-    /// The total number of books in the series.
+    /// Total number of books in the series.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<usize>,
 
@@ -55,14 +55,20 @@ pub struct ComicInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page_count: Option<usize>,
 
-    // /// Quite specific to US comics, some books can be part of cross-over story arcs.
-    // ///
-    // /// Those fields can be used to specify an alternate series, its number, and count of books.
-    // ///
-    // /// Excluded for now.
-    // pub alternate_series: Option<String>,
-    // pub alternate_number: Option<String>,
-    // pub alternate_count: Option<String>,
+    /// Alternate title of the series the book is part of.
+    /// Quite specific to US comics, some books can be part of cross-over story arcs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternate_series: Option<String>,
+
+    /// Alternate number of the book in the series..
+    /// Quite specific to US comics, some books can be part of cross-over story arcs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternate_number: Option<String>,
+
+    /// Alternate total number of books in the series.
+    /// Quite specific to US comics, some books can be part of cross-over story arcs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternate_count: Option<String>,
 
     /// Usually contains the release year of the book.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,7 +177,7 @@ pub struct ComicInfo {
     /// See also:
     ///  * [Choosing a language tag - W3C](https://www.w3.org/International/questions/qa-choosing-language-tags)
     ///  * [Language subtag lookup app](https://r12a.github.io/app-subtags/)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "LanguageISO", skip_serializing_if = "Option::is_none")]
     pub language_iso: Option<String>,
 
     /// The original publication's binding format for scanned physical books or presentation format for digital sources.
