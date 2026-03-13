@@ -1,17 +1,20 @@
-use std::io::Read;
+use std::{fs::File, io::Read, path::PathBuf};
 
 use comicinfo::ComicInfo;
 use eframe::egui;
 use egui_file_dialog::FileDialog;
+use zip::{ZipArchive, result::ZipError};
 
 struct App {
     file_dialog: FileDialog,
+    opened_files: Vec<(PathBuf, ComicInfo)>,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
             file_dialog: FileDialog::new(),
+            opened_files: Vec::new(),
         }
     }
 }
@@ -35,33 +38,10 @@ impl eframe::App for App {
         });
 
         self.file_dialog.update(ctx);
-        if let Some(files) = self.file_dialog.take_picked_multiple() {
-            println!("Selected files: {:?}", files);
-
-            let file = files.get(0).unwrap();
-
-            match std::fs::File::open(&file) {
-                Ok(reader) => {
-                    match zip::ZipArchive::new(reader) {
-                        Ok(mut archive) => {
-                            if let Ok(mut comic_info_file) = archive.by_name("ComicInfo.xml") {
-                                let mut xml_content = String::new();
-                                if comic_info_file.read_to_string(&mut xml_content).is_ok() {
-                                    match quick_xml::de::from_str::<ComicInfo>(&xml_content) {
-                                        Ok(comic_info) => {
-                                            println!("Loaded ComicInfo: {:?}", comic_info);
-                                            // Store comic_info for later modification and update
-                                        }
-                                        Err(e) => eprintln!("Failed to deserialize ComicInfo: {}", e),
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => eprintln!("Failed to open CBZ file: {}", e),
-                    }
-                }
-                Err(e) => eprintln!("Failed to read file: {}", e),
-            }
+        if let Some(paths) = self.file_dialog.take_picked_multiple() {
+            // Is some cleanup of old files needed here?
+            self.opened_files = open_cbzs(paths);
+            println!("ComicInfos: {:?}", &self.opened_files);
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -72,6 +52,39 @@ impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         // flush files
     }
+}
+
+fn open_cbzs(paths: Vec<PathBuf>) -> Vec<(PathBuf, ComicInfo)> {
+    paths.into_iter()
+        .filter_map(|path| {
+            match open_cbz(&path) {
+                Ok(content) => Some((path, content)),
+                Err(e) => {
+                    eprintln!("zip error: {}", e);
+                    None
+                },
+            }
+        })
+        .filter_map(|(path, content)| {
+            match quick_xml::de::from_str(&content) {
+                Ok(comic_info) => Some((path, comic_info)),
+                Err(e) => {
+                    eprintln!("xml error: {}", e);
+                    None
+                },
+            }
+        })
+        .collect()
+}
+
+fn open_cbz(path: &PathBuf) -> Result<String, ZipError> {
+    let file = File::open(path).map_err(ZipError::Io)?;
+    let mut archive = ZipArchive::new(file)?;
+    let mut xml = archive.by_name("ComicInfo.xml")?;
+
+    let mut buf = String::new();
+    xml.read_to_string(&mut buf).map_err(ZipError::Io)?;
+    Ok(buf)
 }
 
 fn main() -> eframe::Result {
