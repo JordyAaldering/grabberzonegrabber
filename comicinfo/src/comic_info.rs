@@ -1,19 +1,24 @@
 use serde::{Deserialize, Serialize, Serializer};
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-use crate::{ArrayOfComicPageInfo, deserialize_vec_csv, serialize_vec_csv};
+use crate::ArrayOfComicPageInfo;
+
+#[allow(unused)]
+type CsvVec = Option<StringWithSeparator<CommaSeparator, String>>;
 
 /// The `ComicInfo.xml` file originates from the ComicRack application, which is not developed anymore.
 /// The `ComicInfo.xml` however is used by a variety of applications.
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]
-#[serde(default, rename = "ComicInfo", rename_all = "PascalCase")]
-#[serde_with::skip_serializing_none]
+#[serde(default, rename_all = "PascalCase")]
+#[skip_serializing_none]
+#[serde_as]
 pub struct ComicInfo {
     /// Title of the book.
     pub title: Option<String>,
 
     /// A group or collection the series belongs to.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub series_group: Option<Vec<String>>,
 
     /// Title of the series the book is part of.
@@ -88,40 +93,40 @@ pub struct ComicInfo {
     pub reviews: Option<String>,
 
     /// Person or organization responsible for creating the scenario.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub writer: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing the art.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub penciller: Option<Vec<String>>,
 
     /// Person or organization responsible for inking the pencil art.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub inker: Option<Vec<String>>,
 
     /// Person or organization responsible for applying color to drawings.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub colorist: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing text and speech bubbles.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub letterer: Option<Vec<String>>,
 
     /// Person or organization responsible for drawing the cover art.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub cover_artist: Option<Vec<String>>,
 
     /// A person or organization contributing to a resource by revising or elucidating the content, e.g., adding an introduction, notes, or other critical matter.
     /// An editor may also prepare a resource for production, publication, or distribution.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub editor: Option<Vec<String>>,
 
     /// A person or organization who renders a text from one language into another, or from an older form of a language into the modern form.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub translator: Option<Vec<String>>,
 
     /// A person or organization responsible for publishing, releasing, or issuing a resource.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub publisher: Option<Vec<String>>,
 
     /// An imprint is a group of publications under the umbrella of a larger imprint or a Publisher.
@@ -130,17 +135,17 @@ pub struct ComicInfo {
     pub imprint: Option<String>,
 
     /// Genre of the book or series. For example, Science-Fiction or Shonen.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub genre: Option<Vec<String>>,
 
     /// Tags of the book or series. For example, ninja or school life.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub tags: Option<Vec<String>>,
 
     /// A URL pointing to a reference website for the book.
     ///
     /// If a space is a part of the url it must be [percent encoded](https://datatracker.ietf.org/doc/html/rfc2396#section-2.4.1).
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub url: Option<Vec<String>>,
 
     /// A [Global Trade Item Number](https://en.wikipedia.org/wiki/Global_Trade_Item_Number) identifying the book.
@@ -156,7 +161,7 @@ pub struct ComicInfo {
     /// See also:
     ///  * [Choosing a language tag - W3C](https://www.w3.org/International/questions/qa-choosing-language-tags)
     ///  * [Language subtag lookup app](https://r12a.github.io/app-subtags/)
-    #[serde(rename = "LanguageISO", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "LanguageISO")]
     pub language_iso: Option<String>,
 
     /// The original publication's binding format for scanned physical books or presentation format for digital sources.
@@ -171,15 +176,15 @@ pub struct ComicInfo {
     pub manga: Option<Manga>,
 
     /// Characters present in the book.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub characters: Option<Vec<String>>,
 
     /// Teams present in the book.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub teams: Option<Vec<String>>,
 
     /// Locations mentioned in the book.
-    #[serde(serialize_with = "serialize_vec_csv", deserialize_with = "deserialize_vec_csv")]
+    #[serde_as(as = "CsvVec")]
     pub locations: Option<Vec<String>>,
 
     /// Main character or team mentioned in the book.

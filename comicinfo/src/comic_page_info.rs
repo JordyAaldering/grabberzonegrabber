@@ -5,7 +5,7 @@ use crate::YesNo;
 /// Wrapper to holds all pages of the book.
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]
-#[serde(default, rename = "ArrayOfComicPageInfo")]
+#[serde(default)]
 pub struct ArrayOfComicPageInfo {
     #[serde(rename = "Page")]
     pub pages: Vec<Page>,
@@ -14,7 +14,7 @@ pub struct ArrayOfComicPageInfo {
 /// Describes each page of the book.
 #[derive(Clone, Default, Debug)]
 #[derive(Serialize, Deserialize)]
-#[serde(default, rename = "Page")]
+#[serde(default)]
 #[serde_with::skip_serializing_none]
 pub struct Page {
     /// Page number.
