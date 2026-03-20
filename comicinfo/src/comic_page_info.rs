@@ -1,18 +1,11 @@
+use std::cmp;
+
 use serde::{Deserialize, Serialize};
 
-use crate::YesNo;
-
-/// Wrapper to holds all pages of the book.
-#[derive(Clone, Default, Debug)]
-#[derive(Serialize, Deserialize)]
-#[serde(default)]
-pub struct ArrayOfComicPageInfo {
-    #[serde(rename = "Page")]
-    pub pages: Vec<Page>,
-}
+use crate::{ComicPageType, YesNo, merge};
 
 /// Describes each page of the book.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
 #[serde_with::skip_serializing_none]
@@ -50,31 +43,30 @@ pub struct Page {
     pub key: Option<String>,
 }
 
-/// Type of a comic book page.
-#[derive(Clone, Copy, Debug)]
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum ComicPageType {
-    /// The front cover of the book.
-    FrontCover,
-    /// Sometimes found inside the book as a second cover.
-    InnerCover,
-    /// Summary of previous issues.
-    Roundup,
-    /// The main content of the book.
-    Story,
-    /// An advertisement page.
-    Advertisement,
-    /// Editorial content, such as a letter from the editor.
-    Editorial,
-    /// Letters from readers.
-    Letters,
-    /// Sneak preview of the next book, or another comic.
-    Preview,
-    /// The back cover of the book.
-    BackCover,
-    /// Anything not covered above
-    Other,
-    /// Indicates that the page should not be shown.
-    Deleted,
+impl Page {
+    pub fn merge(&self, other: &Self) -> Self {
+        assert_eq!(self.image, other.image);
+        Self {
+            image: self.image,
+            r#type: merge(&self.r#type, &other.r#type),
+            double_page: merge(&self.double_page, &other.double_page),
+            image_width: merge(&self.image_width, &other.image_width),
+            image_height: merge(&self.image_height, &other.image_height),
+            file_size: merge(&self.file_size, &other.file_size),
+            bookmark: merge(&self.bookmark, &other.bookmark),
+            key: merge(&self.key, &other.key),
+        }
+    }
+}
+
+impl PartialOrd for Page {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Page {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.image.cmp(&other.image)
+    }
 }

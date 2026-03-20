@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as, skip_serializing_none};
 
-use crate::{AgeRating, ArrayOfComicPageInfo, CommunityRating, Manga, Month, YesNo};
+use crate::{AgeRating, ArrayOfComicPageInfo, CommunityRating, Manga, Month, YesNo, merge};
 
 #[allow(unused)]
 type CsvVec = Option<StringWithSeparator<CommaSeparator, String>>;
@@ -192,4 +192,60 @@ pub struct ComicInfo {
 
     /// Describes each page of the book.
     pub pages: Option<ArrayOfComicPageInfo>,
+}
+
+impl ComicInfo {
+    pub fn merge(&self, other: &Self) -> Self {
+        Self {
+            title: merge(&self.title, &other.title),
+            series_group: merge(&self.series_group, &other.series_group),
+            series: merge(&self.series, &other.series),
+            number: merge(&self.number, &other.number),
+            count: merge(&self.count, &other.count),
+            volume: merge(&self.volume, &other.volume),
+            story_arc: merge(&self.story_arc, &other.story_arc),
+            story_arc_number: merge(&self.story_arc_number, &other.story_arc_number),
+            page_count: merge(&self.page_count, &other.page_count),
+            alternate_series: merge(&self.alternate_series, &other.alternate_series),
+            alternate_number: merge(&self.alternate_number, &other.alternate_number),
+            alternate_count: merge(&self.alternate_count, &other.alternate_count),
+            year: merge(&self.year, &other.year),
+            month: merge(&self.month, &other.month),
+            day: merge(&self.day, &other.day),
+            age_rating: merge(&self.age_rating, &other.age_rating),
+            community_rating: merge(&self.community_rating, &other.community_rating),
+            description: merge(&self.description, &other.description),
+            notes: merge(&self.notes, &other.notes),
+            scan_information: merge(&self.scan_information, &other.scan_information),
+            reviews: merge(&self.reviews, &other.reviews),
+            writer: merge(&self.writer, &other.writer),
+            penciller: merge(&self.penciller, &other.penciller),
+            inker: merge(&self.inker, &other.inker),
+            colorist: merge(&self.colorist, &other.colorist),
+            letterer: merge(&self.letterer, &other.letterer),
+            cover_artist: merge(&self.cover_artist, &other.cover_artist),
+            editor: merge(&self.editor, &other.editor),
+            translator: merge(&self.translator, &other.translator),
+            publisher: merge(&self.publisher, &other.publisher),
+            imprint: merge(&self.imprint, &other.imprint),
+            genre: merge(&self.genre, &other.genre),
+            tags: merge(&self.tags, &other.tags),
+            url: merge(&self.url, &other.url),
+            gtin: merge(&self.gtin, &other.gtin),
+            language_iso: merge(&self.language_iso, &other.language_iso),
+            format: merge(&self.format, &other.format),
+            black_and_white: merge(&self.black_and_white, &other.black_and_white),
+            manga: merge(&self.manga, &other.manga),
+            characters: merge(&self.characters, &other.characters),
+            teams: merge(&self.teams, &other.teams),
+            locations: merge(&self.locations, &other.locations),
+            main_character_or_team: merge(&self.main_character_or_team, &other.main_character_or_team),
+            pages: match (&self.pages, &other.pages) {
+                (Some(l), Some(r)) => Some(l.merge(r)),
+                (Some(l), None) => Some(l.clone()),
+                (None, Some(r)) => Some(r.clone()),
+                (None, None) => None,
+            },
+        }
+    }
 }
